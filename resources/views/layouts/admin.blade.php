@@ -18,9 +18,21 @@
 
     <!-- Styles -->
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css" rel="stylesheet">
+    
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.27/dist/sweetalert2.min.css" rel="stylesheet">
+    
+    <!-- Toastr CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
 
     <!-- Favicon -->
     <link href="{{ asset('img/favicon.png') }}" rel="icon" type="image/png">
+    
+    @stack('styles')
 </head>
 <body id="page-top">
 
@@ -32,9 +44,9 @@
         <!-- Sidebar - Brand -->
         <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url('/home') }}">
             <div class="sidebar-brand-icon rotate-n-15">
-                <i class="fas fa-laugh-wink"></i>
+                <i class="fas fa-network-wired"></i>
             </div>
-            <div class="sidebar-brand-text mx-3">SB Admin <sup>2</sup></div>
+            <div class="sidebar-brand-text mx-3">MikroTik <sup>PPP</sup></div>
         </a>
 
         <!-- Divider -->
@@ -52,12 +64,125 @@
 
         <!-- Heading -->
         <div class="sidebar-heading">
-            {{ __('Settings') }}
+            {{ __('Pelanggan') }}
         </div>
 
+        <!-- Nav Item - Customers -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseCustomers" aria-expanded="true" aria-controls="collapseCustomers">
+                <i class="fas fa-fw fa-users"></i>
+                <span>Kelola Pelanggan</span>
+            </a>
+            <div id="collapseCustomers" class="collapse" aria-labelledby="headingCustomers" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Manajemen Pelanggan:</h6>
+                    <a class="collapse-item" href="{{ route('customers.index') }}">Data Pelanggan</a>
+                    <a class="collapse-item" href="{{ route('customers.create') }}">Tambah Pelanggan</a>
+                    <a class="collapse-item" href="{{ route('customers.inactive') }}">Pelanggan Nonaktif</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - PPP Secrets -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('ppp-secrets.index') }}">
+                <i class="fas fa-fw fa-key"></i>
+                <span>PPP Secrets</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - PPP Profiles -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('ppp-profiles.index') }}">
+                <i class="fas fa-fw fa-cogs"></i>
+                <span>PPP Profiles</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            {{ __('Billing') }}
+        </div>
+
+        <!-- Nav Item - Invoices -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseInvoices" aria-expanded="true" aria-controls="collapseInvoices">
+                <i class="fas fa-fw fa-file-invoice"></i>
+                <span>Invoice & Tagihan</span>
+            </a>
+            <div id="collapseInvoices" class="collapse" aria-labelledby="headingInvoices" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Manajemen Invoice:</h6>
+                    <a class="collapse-item" href="{{ route('invoices.index') }}">Semua Invoice</a>
+                    <a class="collapse-item" href="{{ route('invoices.create') }}">Buat Invoice</a>
+                    <a class="collapse-item" href="{{ route('invoices.generate-monthly') }}">Generate Bulanan</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Payments -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('payments.index') }}">
+                <i class="fas fa-fw fa-money-bill-wave"></i>
+                <span>Pembayaran</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            {{ __('Monitoring') }}
+        </div>
+
+        <!-- Nav Item - Network Monitoring -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMonitoring" aria-expanded="true" aria-controls="collapseMonitoring">
+                <i class="fas fa-fw fa-chart-area"></i>
+                <span>Network Monitor</span>
+            </a>
+            <div id="collapseMonitoring" class="collapse" aria-labelledby="headingMonitoring" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Monitoring Tools:</h6>
+                    <a class="collapse-item" href="{{ route('ppp-secrets.active-connections') }}">User Online</a>
+                    <a class="collapse-item" href="{{ route('usage-logs.index') }}">Usage Logs</a>
+                    <a class="collapse-item" href="{{ route('usage-logs.statistics') }}">Statistics</a>
+                    <a class="collapse-item" href="{{ route('usage-logs.active-connections') }}">Active Connections</a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Reports -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('usage-logs.statistics') }}">
+                <i class="fas fa-fw fa-chart-line"></i>
+                <span>Laporan</span>
+            </a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider">
+
+        <!-- Heading -->
+        <div class="sidebar-heading">
+            {{ __('Pengaturan') }}
+        </div>
+
+        <!-- Nav Item - MikroTik Settings -->
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('mikrotik-settings.index') }}">
+                <i class="fas fa-fw fa-server"></i>
+                <span>Pengaturan MikroTik</span>
+            </a>
+        </li>
+
         <!-- Nav Item - Profile -->
-        <li class="nav-item {{ Nav::isRoute('profile') }}">
-            <a class="nav-link" href="{{ route('profile') }}">
+        <li class="nav-item {{ Nav::isRoute('profile.edit') }}">
+            <a class="nav-link" href="{{ route('profile.edit') }}">
                 <i class="fas fa-fw fa-user"></i>
                 <span>{{ __('Profile') }}</span>
             </a>
@@ -246,7 +371,7 @@
                         </a>
                         <!-- Dropdown - User Information -->
                         <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                            <a class="dropdown-item" href="{{ route('profile') }}">
+                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
                                 <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                 {{ __('Profile') }}
                             </a>
@@ -326,8 +451,57 @@
 
 <!-- Scripts -->
 <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+<!-- Popper.js - Required for Bootstrap dropdowns -->
+<script src="{{ asset('vendor/popper.js/popper.min.js') }}"></script>
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('vendor/jquery-easing/jquery.easing.min.js') }}"></script>
 <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.27/dist/sweetalert2.all.min.js"></script>
+
+<!-- Toastr JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+// Global configuration for Toastr
+toastr.options = {
+    "closeButton": true,
+    "debug": false,
+    "newestOnTop": false,
+    "progressBar": true,
+    "positionClass": "toast-top-right",
+    "preventDuplicates": false,
+    "onclick": null,
+    "showDuration": "300",
+    "hideDuration": "1000",
+    "timeOut": "5000",
+    "extendedTimeOut": "1000",
+    "showEasing": "swing",
+    "hideEasing": "linear",
+    "showMethod": "fadeIn",
+    "hideMethod": "fadeOut"
+};
+
+// Global CSRF token for AJAX requests
+$.ajaxSetup({
+    headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+    }
+});
+</script>
+
+@stack('scripts')
 </body>
 </html>

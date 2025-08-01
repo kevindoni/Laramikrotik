@@ -21,7 +21,24 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Generate monthly invoices daily at 6 AM
+        $schedule->command('invoices:generate-monthly')
+                 ->dailyAt('06:00')
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/invoice-generation.log'));
+        
+        // Process overdue invoices every hour at 5 minutes past the hour
+        $schedule->command('invoices:process-overdue')
+                 ->hourly()
+                 ->at(5)
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/overdue-processing.log'));
+        
+        // Sync PPP profiles and secrets with MikroTik daily at 2 AM
+        $schedule->command('mikrotik:sync')
+                 ->dailyAt('02:00')
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/mikrotik-sync.log'));
     }
 
     /**

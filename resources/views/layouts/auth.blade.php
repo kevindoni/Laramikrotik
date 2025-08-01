@@ -26,6 +26,8 @@
 
 <!-- Scripts -->
 <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+<!-- Popper.js - Required for Bootstrap dropdowns -->
+<script src="{{ asset('vendor/popper.js/popper.min.js') }}"></script>
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
 </body>

@@ -17,7 +17,14 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 'last_name', 'email', 'password',
+        'name', 
+        'last_name', 
+        'email', 
+        'password', 
+        'role',
+        'phone',
+        'address',
+        'is_active',
     ];
 
     /**
@@ -73,6 +80,35 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+    
+    /**
+     * Get the payments verified by this user.
+     */
+    public function verifiedPayments()
+    {
+        return $this->hasMany(Payment::class, 'verified_by');
+    }
+
+    /**
+     * Check if the user is an admin.
+     *
+     * @return bool
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if the user is a staff member.
+     *
+     * @return bool
+     */
+    public function isStaff()
+    {
+        return $this->role === 'staff';
     }
 }

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\User;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,18 +12,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
+        // Create admin user only - no dummy data
+        User::updateOrCreate(
+            ['email' => 'admin@admin.com'],
+            [
+                'name' => 'Administrator',
+                'last_name' => 'System',
+                'password' => 'admin123',
+                'role' => 'admin',
+            ]
+        );
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
-
-         \App\Models\User::factory()->create([
-             'name' => 'John',
-             'last_name' => 'Doe',
-             'password' => 'password',
-             'email' => 'test@example.com',
-         ]);
+        $this->command->info('✅ Admin user created successfully!');
+        $this->command->info('📧 Email: admin@admin.com');
+        $this->command->info('🔑 Password: admin123');
+        $this->command->info('');
+        $this->command->info('ℹ️  All other data (customers, profiles, secrets) will be synced from MikroTik router.');
+        $this->command->info('🔧 Please configure your MikroTik connection settings first.');
     }
 }

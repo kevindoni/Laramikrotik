@@ -1,0 +1,480 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\PppSecret;
+use App\Models\UsageLog;
+use App\Services\MikrotikService;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class UsageLogController extends Controller
+{
+    protected $mikrotikService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param  \App\Services\MikrotikService  $mikrotikService
+     * @return void
+     */
+    public function __construct(MikrotikService $mikrotikService)
+    {
+        $this->mikrotikService = $mikrotikService;
+    }
+
+    /**
+     * Display a listing of the usage logs.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+        $query = UsageLog::with(['pppSecret', 'pppSecret.customer'])
+            ->orderBy('connected_at', 'desc');
+
+        // Filter by PPP Secret
+        if ($request->has('ppp_secret_id') && $request->ppp_secret_id) {
+            $query->where('ppp_secret_id', $request->ppp_secret_id);
+        }
+
+        // Filter by date range
+        if ($request->has('start_date') && $request->start_date) {
+            $query->where('connected_at', '>=', $request->start_date . ' 00:00:00');
+        }
+
+        if ($request->has('end_date') && $request->end_date) {
+            $query->where('connected_at', '<=', $request->end_date . ' 23:59:59');
+        }
+
+        // Filter by active sessions
+        if ($request->has('active') && $request->active) {
+            $query->whereNull('disconnected_at');
+        }
+
+        $logs = $query->paginate(15);
+
+        // Get list of PPP Secrets for filter dropdown
+        $pppSecrets = PppSecret::with('customer')
+            ->orderBy('username')
+            ->get()
+            ->map(function ($secret) {
+                return [
+                    'id' => $secret->id,
+                    'label' => $secret->username . ' (' . ($secret->customer->name ?? 'No Customer') . ')'
+                ];
+            });
+
+        return view('usage-logs.index', [
+            'usageLogs' => $logs,
+            'pppSecrets' => $pppSecrets,
+            'filters' => $request->only(['ppp_secret_id', 'start_date', 'end_date', 'active'])
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new usage log.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        $customers = \App\Models\Customer::orderBy('name')->get();
+        
+        return view('usage-logs.create', compact('customers'));
+    }
+
+    /**
+     * Store a newly created usage log in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'username' => 'required|string|max:255',
+            'session_id' => 'nullable|string',
+            'session_start' => 'nullable|date',
+            'session_end' => 'nullable|date|after:session_start',
+            'upload_bytes' => 'nullable|integer|min:0',
+            'download_bytes' => 'nullable|integer|min:0',
+            'ip_address' => 'nullable|ip',
+            'mac_address' => 'nullable|string',
+            'nas_port' => 'nullable|string',
+            'terminate_cause' => 'nullable|string',
+        ]);
+
+        $usageLog = UsageLog::create($request->all());
+
+        return redirect()->route('usage-logs.show', $usageLog)
+            ->with('success', 'Usage log created successfully.');
+    }
+
+    /**
+     * Show the form for editing the specified usage log.
+     *
+     * @param  \App\Models\UsageLog  $usageLog
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(UsageLog $usageLog)
+    {
+        $customers = \App\Models\Customer::orderBy('name')->get();
+        
+        return view('usage-logs.edit', compact('usageLog', 'customers'));
+    }
+
+    /**
+     * Update the specified usage log in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\UsageLog  $usageLog
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, UsageLog $usageLog)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'username' => 'required|string|max:255',
+            'session_id' => 'nullable|string',
+            'session_start' => 'nullable|date',
+            'session_end' => 'nullable|date|after:session_start',
+            'upload_bytes' => 'nullable|integer|min:0',
+            'download_bytes' => 'nullable|integer|min:0',
+            'ip_address' => 'nullable|ip',
+            'mac_address' => 'nullable|string',
+            'nas_port' => 'nullable|string',
+            'terminate_cause' => 'nullable|string',
+        ]);
+
+        $usageLog->update($request->all());
+
+        return redirect()->route('usage-logs.show', $usageLog)
+            ->with('success', 'Usage log updated successfully.');
+    }
+
+    /**
+     * Remove the specified usage log from storage.
+     *
+     * @param  \App\Models\UsageLog  $usageLog
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(UsageLog $usageLog)
+    {
+        $usageLog->delete();
+
+        return redirect()->route('usage-logs.index')
+            ->with('success', 'Usage log deleted successfully.');
+    }
+
+    /**
+     * Display the specified usage log.
+     *
+     * @param  \App\Models\UsageLog  $usageLog
+     * @return \Illuminate\Http\Response
+     */
+    public function show(UsageLog $usageLog)
+    {
+        $usageLog->load(['pppSecret', 'pppSecret.customer']);
+        
+        return view('usage-logs.show', ['log' => $usageLog]);
+    }
+
+    /**
+     * Sync active connections from MikroTik with the local database.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function syncActiveConnections()
+    {
+        try {
+            $this->mikrotikService->connect();
+            $activeConnections = $this->mikrotikService->getActivePppConnections();
+            
+            $syncCount = 0;
+            $newCount = 0;
+            $errorCount = 0;
+            $errors = [];
+            
+            foreach ($activeConnections as $connection) {
+                try {
+                    // Find the PPP Secret by username
+                    $pppSecret = PppSecret::where('username', $connection['name'])->first();
+                    
+                    if (!$pppSecret) {
+                        $errors[] = "PPP Secret not found for username: {$connection['name']}";
+                        $errorCount++;
+                        continue;
+                    }
+                    
+                    // Check if there's an active session for this PPP Secret
+                    $activeLog = UsageLog::where('ppp_secret_id', $pppSecret->id)
+                        ->whereNull('disconnected_at')
+                        ->first();
+                    
+                    if ($activeLog) {
+                        // Update the existing log
+                        $activeLog->update([
+                            'caller_id' => $connection['caller-id'] ?? null,
+                            'uptime' => $connection['uptime'] ?? null,
+                            'bytes_in' => $connection['bytes-in'] ?? 0,
+                            'bytes_out' => $connection['bytes-out'] ?? 0,
+                            'ip_address' => $connection['address'] ?? null,
+                        ]);
+                        $syncCount++;
+                    } else {
+                        // Create a new log
+                        UsageLog::create([
+                            'ppp_secret_id' => $pppSecret->id,
+                            'caller_id' => $connection['caller-id'] ?? null,
+                            'uptime' => $connection['uptime'] ?? null,
+                            'bytes_in' => $connection['bytes-in'] ?? 0,
+                            'bytes_out' => $connection['bytes-out'] ?? 0,
+                            'ip_address' => $connection['address'] ?? null,
+                            'connected_at' => now(),
+                            'session_id' => $connection['.id'] ?? null,
+                        ]);
+                        $newCount++;
+                    }
+                } catch (Exception $e) {
+                    $errors[] = "Error processing connection {$connection['name']}: {$e->getMessage()}";
+                    $errorCount++;
+                }
+            }
+            
+            // Close any active sessions that are no longer active on MikroTik
+            $activeUsernames = collect($activeConnections)->pluck('name')->toArray();
+            $closedCount = 0;
+            
+            $activeLogs = UsageLog::whereNull('disconnected_at')->get();
+            foreach ($activeLogs as $log) {
+                if (!$log->pppSecret) {
+                    // If the PPP Secret has been deleted, close the log
+                    $log->update(['disconnected_at' => now()]);
+                    $closedCount++;
+                    continue;
+                }
+                
+                if (!in_array($log->pppSecret->username, $activeUsernames)) {
+                    $log->update(['disconnected_at' => now()]);
+                    $closedCount++;
+                }
+            }
+            
+            $message = "Sync completed: {$syncCount} updated, {$newCount} new, {$closedCount} closed";
+            if ($errorCount > 0) {
+                $message .= ", {$errorCount} errors";
+            }
+            
+            return redirect()->route('usage-logs.index')
+                ->with('success', $message)
+                ->with('errors', $errors);
+        } catch (Exception $e) {
+            return redirect()->route('usage-logs.index')
+                ->with('error', 'Failed to sync active connections: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display active connections from MikroTik.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function activeConnections()
+    {
+        try {
+            $this->mikrotikService->connect();
+            $activeConnections = $this->mikrotikService->getActivePppConnections();
+            
+            // Get all PPP Secrets to match with active connections
+            $pppSecrets = PppSecret::with('customer', 'pppProfile')->get()->keyBy('username');
+            
+            // Enhance the active connections with local data
+            foreach ($activeConnections as &$connection) {
+                $username = $connection['name'] ?? null;
+                $connection['local_data'] = null;
+                
+                if ($username && isset($pppSecrets[$username])) {
+                    $secret = $pppSecrets[$username];
+                    $connection['local_data'] = [
+                        'id' => $secret->id,
+                        'customer_name' => $secret->customer->name ?? 'No Customer',
+                        'profile_name' => $secret->pppProfile->name ?? 'No Profile',
+                        'comment' => $secret->comment,
+                    ];
+                }
+            }
+            
+            return view('usage-logs.active-connections', [
+                'connections' => $activeConnections,
+                'connectionCount' => count($activeConnections)
+            ]);
+        } catch (Exception $e) {
+            return redirect()->route('usage-logs.index')
+                ->with('error', 'Failed to get active connections: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display usage statistics.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function statistics(Request $request)
+    {
+        // Default to current month if no date range provided
+        $startDate = $request->start_date ?? date('Y-m-01');
+        $endDate = $request->end_date ?? date('Y-m-t');
+        
+        // Get top users by data usage using raw SQL
+        $topUsersRaw = DB::select("
+            SELECT 
+                ppp_secret_id,
+                SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total_bytes,
+                SUM(COALESCE(bytes_in, 0)) as total_bytes_in,
+                SUM(COALESCE(bytes_out, 0)) as total_bytes_out,
+                COUNT(*) as session_count,
+                SUM(TIMESTAMPDIFF(SECOND, connected_at, IFNULL(disconnected_at, NOW()))) as total_seconds
+            FROM usage_logs
+            WHERE connected_at >= ? AND connected_at <= ?
+            GROUP BY ppp_secret_id
+            ORDER BY total_bytes DESC
+            LIMIT 3
+        ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        
+        // Load the related models and format the data
+        $topUsers = collect();
+        foreach ($topUsersRaw as $userRaw) {
+            $pppSecret = PppSecret::with('customer')->find($userRaw->ppp_secret_id);
+            
+            $topUsers->push([
+                'ppp_secret_id' => $userRaw->ppp_secret_id,
+                'username' => $pppSecret->username ?? 'Unknown',
+                'customer_name' => $pppSecret->customer->name ?? 'No Customer',
+                'total_bytes' => (int) $userRaw->total_bytes,
+                'total_bytes_formatted' => UsageLog::formatBytes((int) $userRaw->total_bytes),
+                'total_bytes_in_formatted' => UsageLog::formatBytes((int) $userRaw->total_bytes_in),
+                'total_bytes_out_formatted' => UsageLog::formatBytes((int) $userRaw->total_bytes_out),
+                'session_count' => $userRaw->session_count,
+                'total_duration' => UsageLog::formatDuration($userRaw->total_seconds),
+            ]);
+        }
+        
+        // Get daily usage statistics
+        $dailyStats = collect();
+        
+        // Get daily totals using raw SQL to ensure we get proper values
+        $dailyTotals = DB::select("
+            SELECT 
+                DATE(connected_at) as date,
+                SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total_bytes,
+                COUNT(DISTINCT ppp_secret_id) as unique_users,
+                COUNT(*) as session_count
+            FROM usage_logs 
+            WHERE connected_at >= ? AND connected_at <= ?
+            GROUP BY DATE(connected_at)
+            ORDER BY date
+        ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        
+        foreach ($dailyTotals as $daily) {
+            $dailyStats->push([
+                'date' => $daily->date,
+                'total_bytes' => (int) $daily->total_bytes,
+                'total_bytes_formatted' => UsageLog::formatBytes((int) $daily->total_bytes),
+                'unique_users' => $daily->unique_users,
+                'session_count' => $daily->session_count,
+                'avg_per_user' => $daily->unique_users > 0 ? (int) $daily->total_bytes / $daily->unique_users : 0,
+                'avg_per_user_formatted' => UsageLog::formatBytes($daily->unique_users > 0 ? (int) $daily->total_bytes / $daily->unique_users : 0),
+            ]);
+        }
+        
+        // Get total statistics for the period first
+        $totalBytes = UsageLog::select(DB::raw('SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total'))
+            ->whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->value('total') ?? 0;
+        
+        // Calculate average and max daily usage directly from database
+        $daysWithData = UsageLog::select(DB::raw('DATE(connected_at) as date'))
+            ->whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy(DB::raw('DATE(connected_at)'))
+            ->count();
+            
+        $avgDailyBytes = $daysWithData > 0 ? (int) $totalBytes / $daysWithData : 0;
+        
+        // Get the maximum daily usage
+        $maxDailyBytes = (int) DB::select("
+            SELECT MAX(daily_total) as max_daily 
+            FROM (
+                SELECT SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as daily_total 
+                FROM usage_logs 
+                WHERE connected_at >= ? AND connected_at <= ? 
+                GROUP BY DATE(connected_at)
+            ) as daily_totals
+        ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])[0]->max_daily ?? 0;
+        
+        $totalSessions = UsageLog::whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->count();
+        
+        $avgDailySessions = $dailyStats->avg(function ($stat) {
+            return (int) $stat['session_count'];
+        });
+        
+        $maxDailySessions = $dailyStats->max(function ($stat) {
+            return (int) $stat['session_count'];
+        });
+        
+        $totalStats = [
+            'total_bytes' => (int) $totalBytes,
+            'total_bytes_formatted' => UsageLog::formatBytes((int) $totalBytes),
+            'avg_daily_bytes' => (int) $avgDailyBytes,
+            'avg_daily_bytes_formatted' => UsageLog::formatBytes((int) $avgDailyBytes),
+            'max_daily_bytes' => (int) $maxDailyBytes,
+            'max_daily_bytes_formatted' => UsageLog::formatBytes((int) $maxDailyBytes),
+            'total_sessions' => $totalSessions,
+            'avg_daily_sessions' => round($avgDailySessions ?? 0, 2),
+            'max_daily_sessions' => $maxDailySessions ?? 0,
+            'total_unique_users' => PppSecret::whereHas('usageLogs', function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+            })->count(),
+        ];
+        
+        // Prepare chart data for daily usage
+        $chartData = [
+            'labels' => $dailyStats->pluck('date')->toArray(),
+            'bytes' => $dailyStats->pluck('total_bytes')->toArray(),
+            'users' => $dailyStats->pluck('unique_users')->toArray(),
+            'sessions' => $dailyStats->pluck('session_count')->toArray(),
+        ];
+        
+        return view('usage-logs.statistics', [
+            'topUsers' => $topUsers,
+            'dailyStats' => $dailyStats,
+            'totalStats' => $totalStats,
+            'chartData' => json_encode($chartData),
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ]);
+    }
+
+    /**
+     * Display usage logs for a specific PPP Secret.
+     *
+     * @param  \App\Models\PppSecret  $pppSecret
+     * @return \Illuminate\Http\Response
+     */
+    public function forPppSecret(PppSecret $pppSecret)
+    {
+        $logs = UsageLog::where('ppp_secret_id', $pppSecret->id)
+            ->orderBy('connected_at', 'desc')
+            ->paginate(15);
+        
+        return view('usage-logs.for-ppp-secret', [
+            'pppSecret' => $pppSecret,
+            'logs' => $logs,
+        ]);
+    }
+}
