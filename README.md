@@ -57,7 +57,7 @@
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/kevindoni17/Laramikrotik.git
+git clone https://github.com/kevindoni/Laramikrotik.git
 cd Laramikrotik
 ```
 
