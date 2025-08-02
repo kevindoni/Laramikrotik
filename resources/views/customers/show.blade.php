@@ -74,7 +74,11 @@
                         <div class="col-md-6">
                             <table class="table table-borderless">
                                 <tr>
-                                    <th width="40%">{{ __('Identity Card') }}</th>
+                                    <th width="40%">{{ __('Identity Card Type') }}</th>
+                                    <td>{{ $customer->identity_card_type ?: __('Not specified') }}</td>
+                                </tr>
+                                <tr>
+                                    <th>{{ __('Identity Card') }}</th>
                                     <td>{{ $customer->identity_card ?: __('Not provided') }}</td>
                                 </tr>
                                 <tr>

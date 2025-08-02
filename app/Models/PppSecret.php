@@ -237,18 +237,21 @@ class PppSecret extends Model
     public function getRealTimeConnectionStatus()
     {
         try {
-            $mikrotikService = new MikrotikService();
-            $settings = MikrotikSetting::first();
+            // Get the active MikroTik setting
+            $setting = MikrotikSetting::getActive();
             
-            if (!$settings) {
+            if (!$setting) {
+                logger()->warning('No active MikroTik setting found for real-time status check');
                 return null;
             }
 
-            $client = $mikrotikService->connect($settings);
-            if (!$client) {
-                return null;
-            }
-
+            // Create service and set the setting
+            $mikrotikService = new MikrotikService();
+            $mikrotikService->setSetting($setting);
+            
+            // Try to connect
+            $mikrotikService->connect();
+            
             // Get active PPP connections using the proper method
             $activeConnections = $mikrotikService->getActivePppConnections();
             
@@ -266,10 +269,18 @@ class PppSecret extends Model
 
             return ['status' => 'disconnected'];
         } catch (Exception $e) {
+            // Log error and check if it's a timeout
             logger()->error('Failed to get real-time connection status', [
                 'username' => $this->username,
                 'error' => $e->getMessage()
             ]);
+            
+            // For timeout errors, return timeout status instead of null
+            if (strpos($e->getMessage(), 'timeout') !== false || strpos($e->getMessage(), 'timed out') !== false) {
+                return ['status' => 'timeout'];
+            }
+            
+            // For other errors, return null
             return null;
         }
     }

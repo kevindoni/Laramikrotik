@@ -600,21 +600,40 @@ class MikrotikSettingController extends Controller
         if ($setting) {
             $connectionStatus = $setting->getConnectionStatus();
             
-            // If setting is active and recently connected, try to get system info
-            if ($connectionStatus === 'connected') {
+            // Try to get fresh system info regardless of connection status
+            try {
+                $this->mikrotikService->setSetting($setting);
+                $this->mikrotikService->connect();
+                
+                // Get basic system info (this is usually fast)
+                $systemInfo = [
+                    'identity' => $this->mikrotikService->getSystemIdentity(),
+                    'resources' => $this->mikrotikService->getSystemResources(),
+                ];
+                
+                // Update connection status to connected since we successfully connected
+                $connectionStatus = 'connected';
+                $setting->updateLastConnected();
+                
+                // Try to get active connections with timeout handling
                 try {
-                    $this->mikrotikService->connect();
-                    $systemInfo = [
-                        'identity' => $this->mikrotikService->getSystemIdentity(),
-                        'resources' => $this->mikrotikService->getSystemResources(),
-                    ];
-                    
-                    // Get active connections
                     $activeConnections = $this->mikrotikService->getActivePppConnections();
                 } catch (Exception $e) {
-                    // Just log the error, don't stop the page from loading
-                    logger()->error('Failed to get system info: ' . $e->getMessage());
+                    // Log timeout errors for active connections but don't fail
+                    logger()->warning('Failed to get active PPP connections for dashboard', [
+                        'error' => $e->getMessage(),
+                        'setting' => $setting->name
+                    ]);
+                    $activeConnections = []; // Empty array to indicate no connections could be retrieved
                 }
+                
+            } catch (Exception $e) {
+                // Failed to connect, update status
+                $connectionStatus = 'failed';
+                logger()->error('Failed to connect to MikroTik for dashboard', [
+                    'error' => $e->getMessage(),
+                    'setting' => $setting ? $setting->name : 'none'
+                ]);
             }
         }
         

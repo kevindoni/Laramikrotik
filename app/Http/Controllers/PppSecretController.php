@@ -274,23 +274,73 @@ class PppSecretController extends Controller
                 ->with('error', 'Cannot delete PPP secret with invoices. Please delete all invoices first.');
         }
 
-        $syncWithMikrotik = $request->input('sync_with_mikrotik', false);
+        // By default, sync with MikroTik unless explicitly disabled
+        $syncWithMikrotik = $request->input('sync_with_mikrotik', true);
+        $forceDelete = $request->input('force_delete', false);
 
-        // Delete from MikroTik if requested
+        // Delete from MikroTik if sync is enabled
         if ($syncWithMikrotik) {
             try {
                 $this->mikrotikService->connect();
                 $this->mikrotikService->deletePppSecret($pppSecret);
+                
+                logger()->info('PPP secret deleted from both database and MikroTik', [
+                    'username' => $pppSecret->username,
+                    'mikrotik_id' => $pppSecret->mikrotik_id
+                ]);
             } catch (Exception $e) {
-                return redirect()->route('ppp-secrets.show', $pppSecret->id)
-                    ->with('error', 'Failed to delete PPP secret from MikroTik: ' . $e->getMessage());
+                logger()->error('Failed to delete PPP secret from MikroTik', [
+                    'username' => $pppSecret->username,
+                    'error' => $e->getMessage()
+                ]);
+                
+                // If force delete is not enabled, give user options
+                if (!$forceDelete) {
+                    $errorMessage = 'Failed to delete PPP secret from MikroTik: ' . $e->getMessage();
+                    
+                    // Check if it's a "not found" or "timeout" error
+                    $isNotFound = strpos($e->getMessage(), 'not found') !== false;
+                    $isTimeout = strpos($e->getMessage(), 'timeout') !== false || strpos($e->getMessage(), 'slow to respond') !== false;
+                    
+                    if ($isNotFound || $isTimeout) {
+                        $errorMessage .= "\n\nThis could mean:";
+                        if ($isNotFound) {
+                            $errorMessage .= "\n• Secret was manually deleted from MikroTik router";
+                            $errorMessage .= "\n• Secret was never synced to MikroTik";
+                        }
+                        if ($isTimeout) {
+                            $errorMessage .= "\n• MikroTik router is slow to respond";
+                            $errorMessage .= "\n• Network connection is unstable";
+                        }
+                        $errorMessage .= "\n\nYou can still delete from database only by unchecking the MikroTik sync option.";
+                    }
+                    
+                    return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                        ->with('error', $errorMessage);
+                }
+                
+                // If force delete is enabled, continue with database delete but log the issue
+                logger()->warning('Force deleting PPP secret from database despite MikroTik error', [
+                    'username' => $pppSecret->username,
+                    'mikrotik_error' => $e->getMessage()
+                ]);
             }
         }
 
+        // Delete from database
+        $username = $pppSecret->username;
         $pppSecret->delete();
 
+        if ($syncWithMikrotik && !$forceDelete) {
+            $message = "PPP secret '{$username}' deleted successfully from both database and MikroTik.";
+        } elseif ($syncWithMikrotik && $forceDelete) {
+            $message = "PPP secret '{$username}' deleted from database. MikroTik deletion failed but was forced.";
+        } else {
+            $message = "PPP secret '{$username}' deleted from database only.";
+        }
+
         return redirect()->route('ppp-secrets.index')
-            ->with('success', 'PPP secret deleted successfully.');
+            ->with('success', $message);
     }
 
     /**
@@ -343,14 +393,34 @@ class PppSecretController extends Controller
     {
         try {
             $this->mikrotikService->connect();
-            $this->mikrotikService->disconnectPppConnection($pppSecret->username);
+            $result = $this->mikrotikService->disconnectPppConnection($pppSecret->username);
             
-            return redirect()->route('ppp-secrets.show', $pppSecret->id)
-                ->with('success', 'PPP connection disconnected successfully.');
+            if ($result) {
+                return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                    ->with('success', "Disconnect command sent successfully for user '{$pppSecret->username}'. The user should be disconnected within moments. Note: Due to high router load, status verification may be delayed. Please check the connection status manually if needed.");
+            }
+            
         } catch (Exception $e) {
-            return redirect()->route('ppp-secrets.show', $pppSecret->id)
-                ->with('error', 'Failed to disconnect PPP connection: ' . $e->getMessage());
+            $errorMessage = $e->getMessage();
+            
+            // Provide user-friendly messages for common scenarios
+            if (strpos($errorMessage, 'slow to respond') !== false || strpos($errorMessage, 'timeout') !== false) {
+                return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                    ->with('warning', "Disconnect command sent but router is responding slowly due to high load. The user may have been disconnected successfully. Please check manually in a few minutes: '/ppp active print' on MikroTik console.");
+            } elseif (strpos($errorMessage, 'not found in active connections') !== false) {
+                return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                    ->with('info', "User '{$pppSecret->username}' was not found in active connections. The user may already be offline or has reconnected since the last check.");
+            } elseif (strpos($errorMessage, 'may have been sent') !== false) {
+                return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                    ->with('warning', "Disconnect command sent but verification failed due to router load. Please check user status manually: '/ppp active print' on MikroTik console.");
+            } else {
+                return redirect()->route('ppp-secrets.show', $pppSecret->id)
+                    ->with('error', 'Failed to disconnect PPP connection: ' . $errorMessage);
+            }
         }
+        
+        return redirect()->route('ppp-secrets.show', $pppSecret->id)
+            ->with('error', 'Unexpected error occurred during disconnect operation.');
     }
 
     /**
@@ -743,6 +813,7 @@ class PppSecretController extends Controller
         $validator = Validator::make($request->all(), [
             'selected_secrets' => 'required|array|min:1',
             'selected_secrets.*' => 'required|integer|exists:ppp_secrets,id',
+            'sync_with_mikrotik' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -751,11 +822,13 @@ class PppSecretController extends Controller
         }
 
         $secretIds = $request->input('selected_secrets');
+        $syncWithMikrotik = $request->input('sync_with_mikrotik', true);
         $secrets = PppSecret::whereIn('id', $secretIds)->get();
         
         $deleted = 0;
         $skipped = 0;
         $errors = [];
+        $mikrotikErrors = [];
 
         foreach ($secrets as $secret) {
             try {
@@ -766,6 +839,17 @@ class PppSecretController extends Controller
                     continue;
                 }
 
+                // Delete from MikroTik if sync is enabled
+                if ($syncWithMikrotik) {
+                    try {
+                        $this->mikrotikService->connect();
+                        $this->mikrotikService->deletePppSecret($secret);
+                    } catch (Exception $e) {
+                        $mikrotikErrors[] = "Failed to delete '{$secret->username}' from MikroTik: {$e->getMessage()}";
+                        // Continue to delete from database even if MikroTik fails
+                    }
+                }
+
                 $secret->delete();
                 $deleted++;
             } catch (Exception $e) {
@@ -774,12 +858,19 @@ class PppSecretController extends Controller
         }
 
         $message = "Bulk delete completed: {$deleted} secrets deleted";
+        if ($syncWithMikrotik) {
+            $message .= " from both database and MikroTik";
+        } else {
+            $message .= " from database only";
+        }
+        
         if ($skipped > 0) {
             $message .= ", {$skipped} secrets skipped";
         }
 
-        if (count($errors) > 0) {
-            $message .= ". Errors: " . implode("; ", $errors);
+        $allErrors = array_merge($errors, $mikrotikErrors);
+        if (count($allErrors) > 0) {
+            $message .= ". Issues: " . implode("; ", $allErrors);
             return redirect()->route('ppp-secrets.index')
                 ->with('warning', $message);
         }

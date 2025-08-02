@@ -23,6 +23,33 @@
         </div>
     @endif
 
+    @if (session('warning'))
+        <div class="alert alert-warning border-left-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
+    @if (session('info'))
+        <div class="alert alert-info border-left-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle mr-2"></i>{{ session('info') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger border-left-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
+
     <!-- Content Row -->
     <div class="row">
         <div class="col-lg-8">
@@ -170,6 +197,10 @@
                                 @elseif($realTimeStatus && $realTimeStatus['status'] === 'disconnected')
                                     <i class="fas fa-wifi fa-3x text-gray-300 mb-2"></i>
                                     <h6 class="text-muted">{{ __('Disconnected') }}</h6>
+                                @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+                                    <i class="fas fa-hourglass-half fa-3x text-warning mb-2"></i>
+                                    <h6 class="text-warning">{{ __('Connection Timeout') }}</h6>
+                                    <small class="text-muted">{{ __('MikroTik router is slow to respond') }}</small>
                                 @else
                                     <i class="fas fa-exclamation-triangle fa-3x text-warning mb-2"></i>
                                     <h6 class="text-warning">{{ __('Status Unknown') }}</h6>
@@ -205,6 +236,37 @@
                                     </tr>
                                     @endif
                                 </table>
+                            @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+                                {{-- For timeout, show historical data with warning --}}
+                                <div class="alert alert-warning alert-sm mb-3">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    <strong>{{ __('Real-time data unavailable') }}</strong><br>
+                                    {{ __('MikroTik router is responding slowly. Showing last known connection data instead.') }}
+                                </div>
+                                @if($pppSecret->latestUsageLog)
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <th>{{ __('Last Connection') }}</th>
+                                            <td>{{ $pppSecret->latestUsageLog->connected_at ? $pppSecret->latestUsageLog->connected_at->format('d M Y H:i:s') : __('Never') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{{ __('Last Disconnection') }}</th>
+                                            <td>{{ $pppSecret->latestUsageLog->disconnected_at ? $pppSecret->latestUsageLog->disconnected_at->format('d M Y H:i:s') : __('Still connected') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{{ __('Session Duration') }}</th>
+                                            <td>{{ $pppSecret->latestUsageLog->session_duration ?: __('N/A') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>{{ __('Last updated') }}</th>
+                                            <td>{{ now()->format('H:i:s') }}</td>
+                                        </tr>
+                                    </table>
+                                @else
+                                    <div class="text-center py-2">
+                                        <p class="text-muted">{{ __('No historical connection data available.') }}</p>
+                                    </div>
+                                @endif
                             @elseif($pppSecret->latestUsageLog)
                                 <table class="table table-sm table-borderless">
                                     <tr>
@@ -235,6 +297,11 @@
                     @if($realTimeStatus)
                         <div class="text-right mt-2">
                             <small class="text-muted">{{ __('Last updated: ') }}{{ now()->format('H:i:s') }}</small>
+                            @if($realTimeStatus['status'] === 'timeout')
+                                <span class="badge badge-warning ml-2">
+                                    <i class="fas fa-clock mr-1"></i>{{ __('Auto-refresh in') }} <span id="refresh-countdown">60s</span>
+                                </span>
+                            @endif
                             <button class="btn btn-sm btn-outline-secondary ml-2" onclick="window.location.reload()">
                                 <i class="fas fa-sync-alt"></i> {{ __('Refresh') }}
                             </button>
@@ -385,12 +452,48 @@
                         </a>
                         @endif
 
+                        {{-- Disconnect Session Button --}}
+                        @if($realTimeStatus && $realTimeStatus['status'] === 'connected')
+                            <form action="{{ route('ppp-secrets.disconnect', $pppSecret) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to disconnect this user session? This will immediately terminate their internet connection.') }}')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-danger btn-block">
+                                    <i class="fas fa-unlink"></i> {{ __('Disconnect Session') }}
+                                </button>
+                            </form>
+                        @elseif($realTimeStatus && $realTimeStatus['status'] === 'disconnected')
+                            <button type="button" class="btn btn-outline-secondary btn-block" disabled>
+                                <i class="fas fa-user-slash"></i> {{ __('User Offline') }}
+                            </button>
+                        @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+                            <button type="button" class="btn btn-outline-warning btn-block" disabled title="{{ __('Cannot disconnect - connection status unknown due to timeout') }}">
+                                <i class="fas fa-hourglass-half"></i> {{ __('Connection Timeout') }}
+                            </button>
+                        @else
+                            <button type="button" class="btn btn-outline-secondary btn-block" disabled title="{{ __('Cannot disconnect - connection status unknown') }}">
+                                <i class="fas fa-question-circle"></i> {{ __('Status Unknown') }}
+                            </button>
+                        @endif
+
                         <hr>
 
-                        <form action="{{ route('ppp-secrets.destroy', $pppSecret) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this PPP secret? This action cannot be undone.') }}')">
+                        {{-- Delete Form with MikroTik Sync Option --}}
+                        <form action="{{ route('ppp-secrets.destroy', $pppSecret) }}" method="POST" id="deleteForm">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger btn-block">
+                            
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="syncWithMikrotik" name="sync_with_mikrotik" value="1" checked>
+                                    <label class="custom-control-label" for="syncWithMikrotik">
+                                        {{ __('Also delete from MikroTik router') }}
+                                    </label>
+                                    <small class="form-text text-muted">
+                                        {{ __('Uncheck this if you only want to delete from database') }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-danger btn-block" onclick="confirmDelete()">
                                 <i class="fas fa-trash"></i> {{ __('Delete Secret') }}
                             </button>
                         </form>
@@ -437,5 +540,65 @@
             icon.classList.add('fa-eye');
         }
     });
+
+    @if($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+        // Auto-refresh for timeout status every 60 seconds
+        let refreshTimer = setTimeout(function() {
+            console.log('Auto-refreshing due to timeout status...');
+            window.location.reload();
+        }, 60000); // 60 seconds
+
+        // Add visual countdown
+        function updateCountdown() {
+            const countdownElement = document.getElementById('refresh-countdown');
+            if (countdownElement) {
+                let seconds = parseInt(countdownElement.dataset.seconds) - 1;
+                if (seconds > 0) {
+                    countdownElement.dataset.seconds = seconds;
+                    countdownElement.textContent = seconds + 's';
+                    setTimeout(updateCountdown, 1000);
+                } else {
+                    countdownElement.textContent = 'Refreshing...';
+                }
+            }
+        }
+
+        // Start countdown if element exists
+        document.addEventListener('DOMContentLoaded', function() {
+            const countdownElement = document.getElementById('refresh-countdown');
+            if (countdownElement) {
+                countdownElement.dataset.seconds = '60';
+                updateCountdown();
+            }
+        });
+
+        // Clear timer if user manually refreshes
+        window.addEventListener('beforeunload', function() {
+            clearTimeout(refreshTimer);
+        });
+    @endif
+
+    // Delete confirmation with MikroTik sync option
+    function confirmDelete() {
+        const syncCheckbox = document.getElementById('syncWithMikrotik');
+        const syncWithMikrotik = syncCheckbox.checked;
+        
+        let message = '{{ __('Are you sure you want to delete this PPP secret?') }}\n\n';
+        
+        if (syncWithMikrotik) {
+            message += '✅ {{ __('Will be deleted from:') }}\n';
+            message += '• {{ __('Application database') }}\n';
+            message += '• {{ __('MikroTik router') }}\n\n';
+            message += '⚠️ {{ __('This action cannot be undone!') }}';
+        } else {
+            message += '⚠️ {{ __('Will only be deleted from application database') }}\n';
+            message += '📝 {{ __('Secret will remain on MikroTik router') }}\n\n';
+            message += '{{ __('You can manually delete it from MikroTik later if needed.') }}';
+        }
+        
+        if (confirm(message)) {
+            document.getElementById('deleteForm').submit();
+        }
+    }
 </script>
 @endpush

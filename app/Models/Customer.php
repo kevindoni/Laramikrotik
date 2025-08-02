@@ -15,6 +15,7 @@ class Customer extends Model
         'phone',
         'email',
         'identity_card',
+        'identity_card_type',
         'identity_card_number',
         'location',
         'coordinates',

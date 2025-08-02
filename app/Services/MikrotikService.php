@@ -237,6 +237,16 @@ class MikrotikService
     }
 
     /**
+     * Get the RouterOS client instance.
+     * 
+     * @return \RouterOS\Client|null
+     */
+    public function getClient()
+    {
+        return $this->client;
+    }
+
+    /**
      * Test basic network connectivity to MikroTik host.
      */
     public function testNetworkConnectivity()
@@ -949,21 +959,46 @@ class MikrotikService
         $this->ensureConnected();
 
         try {
-            // If no Mikrotik ID provided, find it by username
+            // If no Mikrotik ID provided, try to find it by username
             if (!$secret->mikrotik_id) {
-                $existingSecrets = $this->getPppSecrets();
-                foreach ($existingSecrets as $existingSecret) {
-                    if ($existingSecret['name'] === $secret->username) {
-                        $secret->mikrotik_id = $existingSecret['.id'];
-                        break;
+                logger()->info('Searching for PPP secret in MikroTik', [
+                    'username' => $secret->username
+                ]);
+                
+                try {
+                    // Try direct query to find secret by name (faster than getting all)
+                    $query = new Query('/ppp/secret/print');
+                    $query->where('name', $secret->username);
+                    $result = $this->client->query($query)->read();
+                    
+                    if (!empty($result) && isset($result[0]['.id'])) {
+                        $secret->mikrotik_id = $result[0]['.id'];
+                        logger()->info('Found PPP secret in MikroTik via direct query', [
+                            'username' => $secret->username,
+                            'mikrotik_id' => $secret->mikrotik_id
+                        ]);
+                    } else {
+                        logger()->warning('PPP secret not found in MikroTik via direct query', [
+                            'username' => $secret->username
+                        ]);
+                        throw new Exception("PPP secret '{$secret->username}' not found on MikroTik. It may have been manually deleted from router or never synced.");
                     }
-                }
-
-                if (!$secret->mikrotik_id) {
-                    throw new Exception("PPP secret '{$secret->username}' not found on Mikrotik.");
+                } catch (Exception $e) {
+                    logger()->warning('Failed to search PPP secret in MikroTik', [
+                        'username' => $secret->username,
+                        'error' => $e->getMessage()
+                    ]);
+                    
+                    // Check if error message indicates not found vs timeout
+                    if (strpos($e->getMessage(), 'timeout') !== false || strpos($e->getMessage(), 'timed out') !== false) {
+                        throw new Exception("Unable to verify if PPP secret '{$secret->username}' exists on MikroTik (timeout). Router is slow to respond. Try again later or delete from database only.");
+                    } else {
+                        throw new Exception("PPP secret '{$secret->username}' not found on MikroTik. It may have been manually deleted from router or never synced.");
+                    }
                 }
             }
 
+            // Delete the secret using its ID
             $query = new Query('/ppp/secret/remove');
             $query->equal('.id', $secret->mikrotik_id);
             $this->client->query($query)->read();
@@ -1126,10 +1161,35 @@ class MikrotikService
         $this->ensureConnected();
 
         try {
+            // Create query for active PPP connections
             $query = new Query('/ppp/active/print');
-            return $this->client->query($query)->read();
+            
+            logger()->info('Getting active PPP connections');
+            
+            // Execute query with timeout handling
+            $result = $this->client->query($query)->read();
+            
+            logger()->info('Successfully retrieved active PPP connections', [
+                'count' => count($result ?? [])
+            ]);
+            
+            return $result ?? [];
+            
         } catch (Exception $e) {
-            throw new Exception('Failed to get active PPP connections: ' . $e->getMessage());
+            // Enhanced error logging for timeout issues
+            $errorMsg = $e->getMessage();
+            
+            logger()->warning('Failed to get active PPP connections', [
+                'error' => $errorMsg,
+                'error_type' => strpos($errorMsg, 'timeout') !== false ? 'timeout' : 'other'
+            ]);
+            
+            // For timeout errors, provide more specific message
+            if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'Stream timed out') !== false) {
+                throw new Exception('Failed to get active PPP connections: Query timed out. Router may be busy or connection is slow.');
+            }
+            
+            throw new Exception('Failed to get active PPP connections: ' . $errorMsg);
         }
     }
 
@@ -1141,27 +1201,131 @@ class MikrotikService
         $this->ensureConnected();
 
         try {
-            // Find the connection ID by username
-            $activeConnections = $this->getActivePppConnections();
+            logger()->info('Attempting to disconnect PPP connection', [
+                'username' => $username
+            ]);
+            
+            // Since the MikroTik API doesn't support filtering by name in /ppp/active/print,
+            // we need to get all connections and find the user manually.
+            // However, if that times out, we'll try a direct approach.
+            
             $connectionId = null;
-
-            foreach ($activeConnections as $connection) {
-                if ($connection['name'] === $username) {
-                    $connectionId = $connection['.id'];
-                    break;
+            
+            try {
+                // Try to get active connections with a short timeout
+                $query = new Query('/ppp/active/print');
+                $connections = $this->client->query($query)->read();
+                
+                // Find the user in the connections
+                foreach ($connections as $connection) {
+                    if (isset($connection['name']) && $connection['name'] === $username) {
+                        $connectionId = $connection['.id'];
+                        logger()->info('Found connection ID for user', [
+                            'username' => $username,
+                            'connection_id' => $connectionId
+                        ]);
+                        break;
+                    }
+                }
+                
+            } catch (Exception $e) {
+                logger()->warning('Failed to get active connections list, trying direct disconnect approaches', [
+                    'username' => $username,
+                    'error' => $e->getMessage()
+                ]);
+            }
+            
+            if ($connectionId) {
+                // Method 1: Disconnect using found connection ID
+                try {
+                    $query = new Query('/ppp/active/remove');
+                    $query->equal('.id', $connectionId);
+                    $this->client->query($query)->read();
+                    
+                    logger()->info('Successfully disconnected PPP connection using connection ID', [
+                        'username' => $username,
+                        'connection_id' => $connectionId
+                    ]);
+                    
+                    return true;
+                } catch (Exception $e) {
+                    logger()->warning('Failed to disconnect using connection ID', [
+                        'username' => $username,
+                        'connection_id' => $connectionId,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
-
-            if (!$connectionId) {
-                throw new Exception("No active connection found for user '{$username}'.");
+            
+            // Method 2: Try systematic ID-based disconnect (brute force for active connections)
+            // This assumes MikroTik uses sequential hex IDs starting from *0
+            logger()->info('Trying systematic disconnect approach for user', [
+                'username' => $username
+            ]);
+            
+            $maxAttempts = 50; // Check up to 50 possible connection IDs
+            $disconnectAttempted = false;
+            
+            for ($i = 0; $i < $maxAttempts; $i++) {
+                $testId = '*' . strtoupper(dechex($i));
+                
+                try {
+                    // Check if this ID exists and get its name
+                    $checkQuery = new Query('/ppp/active/print');
+                    $checkQuery->equal('.id', $testId);
+                    $checkResult = $this->client->query($checkQuery)->read();
+                    
+                    if (!empty($checkResult) && isset($checkResult[0]['name'])) {
+                        $foundName = $checkResult[0]['name'];
+                        
+                        if ($foundName === $username) {
+                            // Found our user! Disconnect them
+                            $removeQuery = new Query('/ppp/active/remove');
+                            $removeQuery->equal('.id', $testId);
+                            $this->client->query($removeQuery)->read();
+                            
+                            logger()->info('Successfully disconnected PPP connection using systematic search', [
+                                'username' => $username,
+                                'connection_id' => $testId,
+                                'attempt' => $i
+                            ]);
+                            
+                            $disconnectAttempted = true;
+                            break;
+                        }
+                    }
+                    
+                } catch (Exception $e) {
+                    // This ID doesn't exist or caused an error, continue to next
+                    continue;
+                }
+                
+                // Small delay to avoid overwhelming the router
+                usleep(50000); // 0.05 seconds
             }
-
-            $query = new Query('/ppp/active/remove');
-            $query->equal('.id', $connectionId);
-            $this->client->query($query)->read();
+            
+            if (!$disconnectAttempted) {
+                logger()->warning('User not found in active connections after systematic search', [
+                    'username' => $username,
+                    'checked_ids' => $maxAttempts
+                ]);
+                throw new Exception("User '{$username}' not found in active connections. User may already be offline or the username may be incorrect.");
+            }
+            
             return true;
+            
         } catch (Exception $e) {
-            throw new Exception('Failed to disconnect PPP connection: ' . $e->getMessage());
+            logger()->error('Failed to disconnect PPP connection', [
+                'username' => $username,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Don't re-throw timeout errors as complete failures since disconnect may have worked
+            if (strpos($e->getMessage(), 'timeout') !== false || strpos($e->getMessage(), 'timed out') !== false) {
+                throw new Exception("Disconnect command may have been sent but router response was slow. Please check user status manually to verify disconnection.");
+            }
+            
+            throw $e;
         }
     }
 

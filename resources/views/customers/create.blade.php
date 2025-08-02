@@ -93,16 +93,16 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="identity_card" class="col-sm-3 col-form-label">{{ __('Identity Card Type') }}</label>
+                            <label for="identity_card_type" class="col-sm-3 col-form-label">{{ __('Identity Card Type') }}</label>
                             <div class="col-sm-9">
-                                <select class="form-control @error('identity_card') is-invalid @enderror" 
-                                        id="identity_card" name="identity_card">
+                                <select class="form-control @error('identity_card_type') is-invalid @enderror" 
+                                        id="identity_card_type" name="identity_card_type">
                                     <option value="">{{ __('Select Identity Card Type') }}</option>
-                                    <option value="KTP" {{ old('identity_card') == 'KTP' ? 'selected' : '' }}>KTP</option>
-                                    <option value="SIM" {{ old('identity_card') == 'SIM' ? 'selected' : '' }}>SIM</option>
-                                    <option value="Passport" {{ old('identity_card') == 'Passport' ? 'selected' : '' }}>Passport</option>
+                                    <option value="KTP" {{ old('identity_card_type') == 'KTP' ? 'selected' : '' }}>KTP</option>
+                                    <option value="SIM" {{ old('identity_card_type') == 'SIM' ? 'selected' : '' }}>SIM</option>
+                                    <option value="Passport" {{ old('identity_card_type') == 'Passport' ? 'selected' : '' }}>Passport</option>
                                 </select>
-                                @error('identity_card')
+                                @error('identity_card_type')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>

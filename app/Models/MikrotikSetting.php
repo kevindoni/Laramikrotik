@@ -19,12 +19,14 @@ class MikrotikSetting extends Model
         'is_active',
         'description',
         'last_connected_at',
+        'last_disconnected_at',
     ];
 
     protected $casts = [
         'use_ssl' => 'boolean',
         'is_active' => 'boolean',
         'last_connected_at' => 'datetime',
+        'last_disconnected_at' => 'datetime',
     ];
 
     /**
@@ -55,6 +57,15 @@ class MikrotikSetting extends Model
     public function updateLastConnected()
     {
         $this->last_connected_at = now();
+        return $this->save();
+    }
+
+    /**
+     * Update the last disconnected timestamp.
+     */
+    public function updateLastDisconnected()
+    {
+        $this->last_disconnected_at = now();
         return $this->save();
     }
 
