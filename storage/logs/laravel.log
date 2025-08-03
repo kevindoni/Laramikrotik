@@ -7795,3 +7795,29 @@
 [2025-08-03 05:06:48] local.INFO: PPP active connections count check {"total":0} 
 [2025-08-03 05:06:48] local.INFO: Getting active PPP connections  
 [2025-08-03 05:06:48] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:10:29] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:10:30] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:10:31] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:10:31] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:10:31] local.INFO: Getting active PPP connections  
+[2025-08-03 05:10:31] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:10:47] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:10:47] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:10:47] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:10:47] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:10:47] local.INFO: Getting active PPP connections  
+[2025-08-03 05:10:48] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:10:48] local.WARNING: Could not get active connections from MikroTik for dashboard {"error":"Router response timeout - please try again or check router performance"} 
+[2025-08-03 05:10:53] local.INFO: AJAX connection test started {"setting_id":1,"setting_name":"Mikrotik Peron","has_form_data":false} 
+[2025-08-03 05:10:53] local.INFO: Using saved setting for connection test {"host":"id-11.tunnel.id","port":"6183","username":"admin","use_ssl":false} 
+[2025-08-03 05:10:53] local.INFO: Testing network connectivity...  
+[2025-08-03 05:10:53] local.INFO: Network connectivity test passed  
+[2025-08-03 05:10:53] local.INFO: Testing API connection...  
+[2025-08-03 05:10:54] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:10:54] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:10:54] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:10:55] local.INFO: API connection test passed {"identity":"MikroTik"} 
+[2025-08-03 05:10:55] local.INFO: Updated last connected timestamp  
+[2025-08-03 05:11:06] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:11:06] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:11:06] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
