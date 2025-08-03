@@ -1,6 +1,6 @@
 # 🚀 Laramikrotik - Professional PPPoE Management System
 
-**Laramikrotik** adalah sistem manajemen PPPoE yang modern dan profesional yang dibangun dengan Laravel dan terintegrasi dengan Mikrotik RouterOS. Sistem ini menyediakan solusi lengkap untuk pengelolaan billing, monitoring usage, dan administrasi hotspot.
+**Laramikrotik** adalah sistem manajemen PPPoE yang modern dan profesional yang dibangun dengan Laravel dan terintegrasi dengan Mikrotik RouterOS. Sistem ini menyediakan solusi lengkap untuk pengelolaan billing, monitoring usage, administrasi hotspot, dan **monitoring sistem real-time** yang komprehensif.
 
 ## ✨ Fitur Utama
 
@@ -10,7 +10,14 @@
 - **Usage Analytics**: Analisis mendalam penggunaan data harian dan bulanan
 - **Top Users Tracking**: Monitoring pengguna dengan konsumsi data tertinggi
 
-### 👥 **Customer Management**
+### � **System Health Monitoring** ⭐ *NEW*
+- **Real-time System Monitor**: Monitoring CPU, memory, dan storage secara real-time
+- **Interface Status**: Monitoring status 24+ interface dengan traffic data
+- **Health Sensors**: Monitoring temperature dan sensor hardware
+- **Network Statistics**: Firewall rules dan routing table monitoring
+- **Responsive 3-Card Layout**: Tampilan yang optimal di semua device
+
+### �👥 **Customer Management**
 - **Customer Database**: Manajemen lengkap data pelanggan
 - **Profile Management**: Pengaturan profil PPPoE dengan berbagai paket
 - **User Authentication**: Sistem login terintegrasi dengan role-based access
@@ -27,22 +34,27 @@
 - **PPPoE Management**: Manajemen secret dan profile PPPoE
 - **Usage Monitoring**: Monitoring penggunaan bandwidth real-time
 - **Automatic Commands**: Eksekusi perintah Mikrotik otomatis
+- **API Fallback System**: Sistem fallback untuk koneksi yang tidak stabil
 
 ### 📈 **Monitoring & Reporting**
 - **Usage Logs**: Log penggunaan data yang detail
 - **Session Tracking**: Monitoring sesi pengguna
+- **System Health**: Monitoring comprehensive sistem MikroTik
+- **Network Monitoring**: Interface, firewall, dan routing monitoring
 - **Data Analytics**: Analisis data menggunakan chart interaktif
 - **Export Reports**: Export laporan dalam berbagai format
 
 ## 🛠️ Tech Stack
 
 - **Backend**: Laravel 12.x
-- **Frontend**: Bootstrap 4 (SB Admin 2 Theme)
+- **Frontend**: Bootstrap 4 (SB Admin 2 Theme) with Font Awesome icons
 - **Database**: MySQL/MariaDB
-- **Charts**: ApexCharts.js
-- **API**: Mikrotik RouterOS API
+- **Charts**: ApexCharts.js for interactive visualizations
+- **API**: Mikrotik RouterOS API with PHP RouterOS library
 - **Authentication**: Laravel Sanctum
 - **UI Components**: DataTables, Select2, SweetAlert2
+- **Monitoring**: Real-time system health monitoring
+- **Responsive Design**: Mobile-first responsive layout
 
 ## 📋 Requirements
 
@@ -109,6 +121,9 @@ php artisan serve
 
 ## 📸 Screenshots
 
+### System Health Monitoring Dashboard ⭐ *NEW*
+![System Health](https://via.placeholder.com/800x400?text=System+Health+Monitoring+Dashboard)
+
 ### Dashboard Analytics
 ![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+Analytics)
 
@@ -118,12 +133,23 @@ php artisan serve
 ### Customer Management
 ![Customers](https://via.placeholder.com/800x400?text=Customer+Management)
 
+### Network Interface Monitoring ⭐ *NEW*
+![Interfaces](https://via.placeholder.com/800x400?text=Network+Interface+Monitoring)
+
 ## 🎯 Key Features
 
-### Real-time Data Monitoring
+### Real-time System Monitoring ⭐ *NEW*
+- **System Health Dashboard**: Comprehensive monitoring untuk CPU, memory, dan storage
+- **Interface Monitoring**: Real-time monitoring 24+ network interfaces dengan traffic statistics
+- **Health Sensors**: Temperature monitoring dan hardware health sensors
+- **Network Statistics**: Firewall rules dan routing table dengan status real-time
+- **Responsive UI**: 3-card layout yang optimal untuk desktop dan mobile
+
+### Advanced Data Analytics
 - Live usage tracking dengan ApexCharts
 - Interactive dashboard dengan drill-down capabilities
 - Real-time sync dengan Mikrotik RouterOS
+- Network performance monitoring
 
 ### Advanced Billing System
 - Flexible billing cycles (daily, weekly, monthly)
@@ -132,8 +158,10 @@ php artisan serve
 
 ### Professional UI/UX
 - Responsive design untuk semua device
-- Modern SB Admin 2 theme
+- Modern SB Admin 2 theme dengan Font Awesome icons
 - Interactive charts dan data tables
+- Color-coded status indicators
+- Enhanced visual hierarchy
 
 ## 🔐 Security Features
 
@@ -153,6 +181,12 @@ php artisan serve
 - `payments` - Data pembayaran
 - `mikrotik_settings` - Konfigurasi Mikrotik
 
+### System Monitoring ⭐ *NEW*
+- **Real-time API Integration**: Direct connection ke MikroTik RouterOS API
+- **Fallback System**: Realistic data generation untuk demo dan testing
+- **Timeout Protection**: Enhanced connection handling untuk koneksi yang tidak stabil
+- **JSON API Endpoints**: RESTful API untuk monitoring data
+
 ## 🤝 Contributing
 
 1. Fork repository
@@ -162,6 +196,16 @@ php artisan serve
 5. Open Pull Request
 
 ## 📝 Changelog
+
+### v1.1.0 (2025-08-03) ⭐ *LATEST*
+- ✨ **NEW**: Comprehensive System Health Monitoring
+- 📊 **NEW**: Real-time interface monitoring (24+ interfaces)
+- 🌡️ **NEW**: Hardware health sensors dan temperature monitoring
+- 🛡️ **NEW**: Firewall statistics dan routing table monitoring
+- 🎨 **IMPROVED**: Enhanced UI/UX dengan 3-card responsive layout
+- 🐛 **FIXED**: Syntax errors dan layout issues
+- 🔧 **ENHANCED**: MikroTik API integration dengan fallback system
+- 📱 **ENHANCED**: Mobile-responsive design improvements
 
 ### v1.0.0 (2025-08-02)
 - ✨ Initial release
