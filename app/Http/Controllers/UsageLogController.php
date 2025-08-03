@@ -330,20 +330,22 @@ class UsageLogController extends Controller
         $startDate = $request->start_date ?? date('Y-m-01');
         $endDate = $request->end_date ?? date('Y-m-t');
         
-        // Get top users by data usage using raw SQL
+        // Get top users by data usage using enhanced SQL with validation
         $topUsersRaw = DB::select("
             SELECT 
                 ppp_secret_id,
-                SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total_bytes,
-                SUM(COALESCE(bytes_in, 0)) as total_bytes_in,
-                SUM(COALESCE(bytes_out, 0)) as total_bytes_out,
+                GREATEST(0, SUM(GREATEST(0, COALESCE(bytes_in, 0)) + GREATEST(0, COALESCE(bytes_out, 0)))) as total_bytes,
+                GREATEST(0, SUM(GREATEST(0, COALESCE(bytes_in, 0)))) as total_bytes_in,
+                GREATEST(0, SUM(GREATEST(0, COALESCE(bytes_out, 0)))) as total_bytes_out,
                 COUNT(*) as session_count,
-                SUM(TIMESTAMPDIFF(SECOND, connected_at, IFNULL(disconnected_at, NOW()))) as total_seconds
+                GREATEST(0, SUM(TIMESTAMPDIFF(SECOND, connected_at, IFNULL(disconnected_at, NOW())))) as total_seconds
             FROM usage_logs
             WHERE connected_at >= ? AND connected_at <= ?
+            AND (bytes_in IS NOT NULL OR bytes_out IS NOT NULL)
             GROUP BY ppp_secret_id
+            HAVING total_bytes > 0
             ORDER BY total_bytes DESC
-            LIMIT 3
+            LIMIT 5
         ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         
         // Load the related models and format the data
@@ -364,57 +366,52 @@ class UsageLogController extends Controller
             ]);
         }
         
-        // Get daily usage statistics
+        // Get daily usage statistics with enhanced data validation
         $dailyStats = collect();
         
-        // Get daily totals using raw SQL to ensure we get proper values
+        // Get daily totals using raw SQL with better data handling
         $dailyTotals = DB::select("
             SELECT 
                 DATE(connected_at) as date,
-                SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total_bytes,
+                GREATEST(0, SUM(GREATEST(0, COALESCE(bytes_in, 0)) + GREATEST(0, COALESCE(bytes_out, 0)))) as total_bytes,
                 COUNT(DISTINCT ppp_secret_id) as unique_users,
                 COUNT(*) as session_count
             FROM usage_logs 
             WHERE connected_at >= ? AND connected_at <= ?
+            AND (bytes_in IS NOT NULL OR bytes_out IS NOT NULL)
             GROUP BY DATE(connected_at)
             ORDER BY date
         ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
         
         foreach ($dailyTotals as $daily) {
+            $totalBytes = max(0, (int) $daily->total_bytes); // Ensure positive
+            $uniqueUsers = max(1, (int) $daily->unique_users); // Avoid division by zero
+            
             $dailyStats->push([
                 'date' => $daily->date,
-                'total_bytes' => (int) $daily->total_bytes,
-                'total_bytes_formatted' => UsageLog::formatBytes((int) $daily->total_bytes),
+                'total_bytes' => $totalBytes,
+                'total_bytes_formatted' => UsageLog::formatBytes($totalBytes),
                 'unique_users' => $daily->unique_users,
                 'session_count' => $daily->session_count,
-                'avg_per_user' => $daily->unique_users > 0 ? (int) $daily->total_bytes / $daily->unique_users : 0,
-                'avg_per_user_formatted' => UsageLog::formatBytes($daily->unique_users > 0 ? (int) $daily->total_bytes / $daily->unique_users : 0),
+                'avg_per_user' => $totalBytes / $uniqueUsers,
+                'avg_per_user_formatted' => UsageLog::formatBytes($totalBytes / $uniqueUsers),
             ]);
         }
         
-        // Get total statistics for the period first
-        $totalBytes = UsageLog::select(DB::raw('SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as total'))
-            ->whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->value('total') ?? 0;
+        // Get total statistics for the period with enhanced validation
+        $totalBytes = DB::select("
+            SELECT GREATEST(0, SUM(GREATEST(0, COALESCE(bytes_in, 0)) + GREATEST(0, COALESCE(bytes_out, 0)))) as total
+            FROM usage_logs
+            WHERE connected_at >= ? AND connected_at <= ?
+            AND (bytes_in IS NOT NULL OR bytes_out IS NOT NULL)
+        ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])[0]->total ?? 0;
         
-        // Calculate average and max daily usage directly from database
-        $daysWithData = UsageLog::select(DB::raw('DATE(connected_at) as date'))
-            ->whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->groupBy(DB::raw('DATE(connected_at)'))
-            ->count();
-            
+        // Calculate average and max daily usage with proper validation
+        $daysWithData = max(1, $dailyStats->count()); // Avoid division by zero
         $avgDailyBytes = $daysWithData > 0 ? (int) $totalBytes / $daysWithData : 0;
         
-        // Get the maximum daily usage
-        $maxDailyBytes = (int) DB::select("
-            SELECT MAX(daily_total) as max_daily 
-            FROM (
-                SELECT SUM(COALESCE(bytes_in, 0) + COALESCE(bytes_out, 0)) as daily_total 
-                FROM usage_logs 
-                WHERE connected_at >= ? AND connected_at <= ? 
-                GROUP BY DATE(connected_at)
-            ) as daily_totals
-        ", [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])[0]->max_daily ?? 0;
+        // Get the maximum daily usage with validation
+        $maxDailyBytes = $dailyStats->max('total_bytes') ?? 0;
         
         $totalSessions = UsageLog::whereBetween('connected_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->count();
@@ -442,19 +439,26 @@ class UsageLogController extends Controller
             })->count(),
         ];
         
-        // Prepare chart data for daily usage
+        // Prepare chart data for daily usage with validation
         $chartData = [
             'labels' => $dailyStats->pluck('date')->toArray(),
-            'bytes' => $dailyStats->pluck('total_bytes')->toArray(),
-            'users' => $dailyStats->pluck('unique_users')->toArray(),
-            'sessions' => $dailyStats->pluck('session_count')->toArray(),
+            'bytes' => $dailyStats->pluck('total_bytes')->map(function($bytes) {
+                // Ensure positive values for chart and handle nulls
+                return max(0, (int) ($bytes ?? 0));
+            })->toArray(),
+            'users' => $dailyStats->pluck('unique_users')->map(function($users) {
+                return max(0, (int) ($users ?? 0));
+            })->toArray(),
+            'sessions' => $dailyStats->pluck('session_count')->map(function($sessions) {
+                return max(0, (int) ($sessions ?? 0));
+            })->toArray(),
         ];
         
         return view('usage-logs.statistics', [
             'topUsers' => $topUsers,
             'dailyStats' => $dailyStats,
             'totalStats' => $totalStats,
-            'chartData' => json_encode($chartData),
+            'chartData' => $chartData, // Remove json_encode, let Blade handle it
             'startDate' => $startDate,
             'endDate' => $endDate,
         ]);
@@ -476,5 +480,66 @@ class UsageLogController extends Controller
             'pppSecret' => $pppSecret,
             'logs' => $logs,
         ]);
+    }
+
+    /**
+     * Sync usage logs from MikroTik router.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function syncFromMikrotik()
+    {
+        try {
+            $usageLogService = new \App\Services\UsageLogService($this->mikrotikService);
+            $result = $usageLogService->syncFromMikrotik();
+
+            if ($result['success']) {
+                $message = "✅ Successfully synced {$result['synced']} active connections";
+                
+                if (!empty($result['errors'])) {
+                    $errorCount = count($result['errors']);
+                    $message .= " with {$errorCount} warnings";
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'synced' => $result['synced'],
+                    'errors' => $result['errors'] ?? []
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to sync: ' . $result['message']
+                ], 500);
+            }
+
+        } catch (Exception $e) {
+            logger()->error('Failed to sync usage logs from web interface', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Determine error type for better user experience
+            $errorMessage = $e->getMessage();
+            $statusCode = 500;
+            
+            if (strpos($errorMessage, 'timeout') !== false) {
+                $statusCode = 408; // Request Timeout
+                $errorMessage = 'MikroTik connection timeout - please try again';
+            } elseif (strpos($errorMessage, 'connection') !== false) {
+                $statusCode = 503; // Service Unavailable
+                $errorMessage = 'Cannot connect to MikroTik router - please check connection';
+            } elseif (strpos($errorMessage, 'No active MikroTik') !== false) {
+                $statusCode = 422; // Unprocessable Entity
+                $errorMessage = 'No active MikroTik configuration found';
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'error_type' => $statusCode === 408 ? 'timeout' : ($statusCode === 503 ? 'connection' : 'server')
+            ], $statusCode);
+        }
     }
 }

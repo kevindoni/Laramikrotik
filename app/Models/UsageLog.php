@@ -27,6 +27,38 @@ class UsageLog extends Model
     ];
 
     /**
+     * Mutator to ensure bytes_in is never negative.
+     */
+    public function setBytesInAttribute($value)
+    {
+        $this->attributes['bytes_in'] = max(0, (int) ($value ?? 0));
+    }
+
+    /**
+     * Mutator to ensure bytes_out is never negative.
+     */
+    public function setBytesOutAttribute($value)
+    {
+        $this->attributes['bytes_out'] = max(0, (int) ($value ?? 0));
+    }
+
+    /**
+     * Accessor to ensure bytes_in is always positive.
+     */
+    public function getBytesInAttribute($value)
+    {
+        return max(0, (int) ($value ?? 0));
+    }
+
+    /**
+     * Accessor to ensure bytes_out is always positive.
+     */
+    public function getBytesOutAttribute($value)
+    {
+        return max(0, (int) ($value ?? 0));
+    }
+
+    /**
      * Get the PPP secret that the usage log is for.
      */
     public function pppSecret()

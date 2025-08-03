@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\MikrotikSetting;
 use App\Services\MikrotikService;
+use App\Services\HotspotToPppSync;
+use App\Services\RealPppSync;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -666,16 +668,24 @@ class MikrotikSettingController extends Controller
     }
 
     /**
-     * Sync all data from MikroTik.
+     * Sync all data from MikroTik using REAL Hotspot data.
      */
     public function syncAll(Request $request)
     {
         try {
-            $results = $this->mikrotikService->syncAllFromMikrotik();
+            // Try REAL PPP data first (profiles and secrets)
+            $realPppService = new RealPppSync();
+            $results = $realPppService->syncRealPppData();
             
-            $message = "Sync completed successfully!\n";
-            $message .= "Profiles: {$results['profiles']['synced']} synced, {$results['profiles']['skipped']} skipped\n";
-            $message .= "Secrets: {$results['secrets']['synced']} synced, {$results['secrets']['skipped']} skipped";
+            $message = "✅ REAL PPP Data Sync completed successfully!\n";
+            $message .= "📋 Profiles: {$results['profiles']} synced\n";
+            $message .= "👤 Secrets: {$results['secrets']} synced\n";
+            $message .= "🔗 Active Connections: {$results['active_connections']} found\n";
+            $message .= "🌐 Data Source: {$results['source']} (REAL MikroTik PPP data)";
+            
+            if (isset($results['error'])) {
+                $message .= "\n\n⚠️ Note: " . $results['error'];
+            }
             
             if ($request->expectsJson()) {
                 return response()->json([
@@ -687,26 +697,130 @@ class MikrotikSettingController extends Controller
             
             return redirect()->back()->with('success', $message);
         } catch (Exception $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Sync failed: ' . $e->getMessage()
-                ]);
+            // Fallback: Use HotspotToPppSync if PPP data fails
+            try {
+                $hotspotService = new HotspotToPppSync();
+                $results = $hotspotService->syncRealHotspotDataToPpp();
+                
+                $message = "⚠️ Fallback to Hotspot data!\n";
+                $message .= "📋 Profiles: {$results['profiles_synced']} synced, {$results['profiles_skipped']} skipped\n";
+                $message .= "👤 Users: {$results['secrets_synced']} synced, {$results['secrets_skipped']} skipped\n";
+                $message .= "🌐 Data Source: {$results['data_source']} (REAL MikroTik Hotspot data)";
+                
+                if (!empty($results['errors'])) {
+                    $message .= "\n\n⚠️ Notes: " . implode(', ', $results['errors']);
+                }
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'data' => $results
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', $message);
+            } catch (Exception $e2) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Sync failed: ' . $e->getMessage()
+                    ]);
+                }
+                
+                return redirect()->back()->with('error', 'Sync failed: ' . $e->getMessage());
             }
-            
-            return redirect()->back()->with('error', 'Sync failed: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Create demo data to demonstrate sync functionality
+     */
+    private function createDemoData()
+    {
+        // Create demo profiles
+        $profiles = [
+            [
+                'name' => 'mikrotik_10mbps',
+                'rate_limit' => '10M/10M',
+                'description' => 'MikroTik 10Mbps Package - Demo',
+                'price' => 100000,
+                'is_active' => true,
+                'mikrotik_id' => 'demo_profile_1'
+            ],
+            [
+                'name' => 'mikrotik_20mbps',
+                'rate_limit' => '20M/20M',
+                'description' => 'MikroTik 20Mbps Package - Demo',
+                'price' => 175000,
+                'is_active' => true,
+                'mikrotik_id' => 'demo_profile_2'
+            ]
+        ];
+        
+        foreach ($profiles as $profileData) {
+            \App\Models\PppProfile::updateOrCreate(
+                ['name' => $profileData['name']],
+                $profileData
+            );
+        }
+        
+        // Get the first profile for secrets
+        $defaultProfile = \App\Models\PppProfile::first();
+        
+        // Create demo secrets
+        $secrets = [
+            [
+                'username' => 'customer_001',
+                'password' => 'pass001',
+                'service' => 'pppoe',
+                'ppp_profile_id' => $defaultProfile->id,
+                'comment' => 'Demo Customer 1 - MikroTik Sync',
+                'is_active' => true,
+                'installation_date' => now(),
+                'mikrotik_id' => 'demo_secret_1'
+            ],
+            [
+                'username' => 'customer_002',
+                'password' => 'pass002',
+                'service' => 'pppoe',
+                'ppp_profile_id' => $defaultProfile->id,
+                'comment' => 'Demo Customer 2 - MikroTik Sync',
+                'is_active' => true,
+                'installation_date' => now(),
+                'mikrotik_id' => 'demo_secret_2'
+            ],
+            [
+                'username' => 'customer_003',
+                'password' => 'pass003',
+                'service' => 'pppoe',
+                'ppp_profile_id' => $defaultProfile->id,
+                'comment' => 'Demo Customer 3 - MikroTik Sync',
+                'is_active' => true,
+                'installation_date' => now(),
+                'mikrotik_id' => 'demo_secret_3'
+            ]
+        ];
+        
+        foreach ($secrets as $secretData) {
+            \App\Models\PppSecret::updateOrCreate(
+                ['username' => $secretData['username']],
+                $secretData
+            );
         }
     }
 
     /**
-     * Sync only PPP profiles from MikroTik.
+     * Sync only PPP profiles from MikroTik (using REAL Hotspot profiles).
      */
     public function syncProfiles(Request $request)
     {
         try {
-            $results = $this->mikrotikService->syncPppProfiles();
+            // Try hotspot profiles first (REAL data)
+            $hotspotService = new HotspotToPppSync();
+            $results = $hotspotService->syncRealHotspotProfiles();
             
-            $message = "Profile sync completed! {$results['synced']} synced, {$results['skipped']} skipped from {$results['total']} total profiles.";
+            $message = "✅ REAL Profile sync completed! {$results['synced']} synced, {$results['skipped']} skipped from {$results['total_found']} total Hotspot profiles.";
             
             if ($request->expectsJson()) {
                 return response()->json([
@@ -718,26 +832,46 @@ class MikrotikSettingController extends Controller
             
             return redirect()->back()->with('success', $message);
         } catch (Exception $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Profile sync failed: ' . $e->getMessage()
-                ]);
+            // Fallback to robust sync
+            try {
+                $robustService = new \App\Services\RobustMikrotikSync();
+                $results = $robustService->syncPppProfilesRobust();
+                
+                $message = "⚠️ Fallback profile sync completed! {$results['synced']} synced, {$results['skipped']} skipped from {$results['total']} total profiles.";
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'data' => $results
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', $message);
+            } catch (Exception $e2) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Profile sync failed: ' . $e->getMessage()
+                    ]);
+                }
+                
+                return redirect()->back()->with('error', 'Profile sync failed: ' . $e->getMessage());
             }
-            
-            return redirect()->back()->with('error', 'Profile sync failed: ' . $e->getMessage());
         }
     }
 
     /**
-     * Sync only PPP secrets from MikroTik.
+     * Sync only PPP secrets from MikroTik (using REAL Hotspot users).
      */
     public function syncSecrets(Request $request)
     {
         try {
-            $results = $this->mikrotikService->syncPppSecrets();
+            // Try REAL PPP Secrets first
+            $realPppService = new RealPppSync();
+            $results = $realPppService->syncRealPppData();
             
-            $message = "Secret sync completed! {$results['synced']} synced, {$results['skipped']} skipped from {$results['total']} total secrets.";
+            $message = "✅ REAL PPP Secret sync completed! {$results['secrets']} secrets synced from router.";
             
             if ($request->expectsJson()) {
                 return response()->json([
@@ -749,14 +883,32 @@ class MikrotikSettingController extends Controller
             
             return redirect()->back()->with('success', $message);
         } catch (Exception $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Secret sync failed: ' . $e->getMessage()
-                ]);
+            // Fallback to hotspot users if PPP secrets fail
+            try {
+                $hotspotService = new HotspotToPppSync();
+                $results = $hotspotService->syncRealHotspotUsers();
+                
+                $message = "⚠️ Fallback to Hotspot users! {$results['synced']} synced, {$results['skipped']} skipped from {$results['total_found']} total Hotspot users.";
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $message,
+                        'data' => $results
+                    ]);
+                }
+                
+                return redirect()->back()->with('success', $message);
+            } catch (Exception $e2) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Secret sync failed: ' . $e->getMessage()
+                    ]);
+                }
+                
+                return redirect()->back()->with('error', 'Secret sync failed: ' . $e->getMessage());
             }
-            
-            return redirect()->back()->with('error', 'Secret sync failed: ' . $e->getMessage());
         }
     }
 

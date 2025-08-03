@@ -70,6 +70,47 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/ppp-secrets/bulk-disable', [PppSecretController::class, 'bulkDisable'])->name('ppp-secrets.bulk-disable');
     Route::post('/ppp-secrets/bulk-sync', [PppSecretController::class, 'bulkSync'])->name('ppp-secrets.bulk-sync');
     
+    // Debug routes for PPP secrets (remove in production)
+    Route::get('/ppp-secrets/test-connection', function() {
+        try {
+            $service = new \App\Services\MikrotikService();
+            $service->connect();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Connection to MikroTik successful!',
+                'host' => $service->loadActiveSetting()->host ?? 'unknown'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    })->name('ppp-secrets.test-connection');
+    
+    Route::get('/ppp-secrets/test-sync', function() {
+        try {
+            $service = new \App\Services\MikrotikService();
+            $service->connect();
+            
+            // Try to get first few secrets for testing
+            $secrets = $service->getAllPppSecrets(3);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Retrieved secrets successfully!',
+                'count' => count($secrets),
+                'sample' => $secrets
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ]);
+        }
+    })->name('ppp-secrets.test-sync');
+    
     // Test route for batching
     Route::get('/ppp-secrets/test-batch', function() {
         try {
@@ -177,8 +218,34 @@ Route::middleware(['auth'])->group(function () {
     // Usage Logs Management
     Route::get('/usage-logs/active-connections', [UsageLogController::class, 'activeConnections'])->name('usage-logs.active-connections');
     Route::get('/usage-logs/statistics', [UsageLogController::class, 'statistics'])->name('usage-logs.statistics');
+    Route::post('/usage-logs/sync-from-mikrotik', [UsageLogController::class, 'syncFromMikrotik'])->name('usage-logs.sync-from-mikrotik');
     Route::get('/usage-logs/customer/{customer}', [UsageLogController::class, 'forCustomer'])->name('usage-logs.for-customer');
     Route::resource('usage-logs', UsageLogController::class)->only(['index', 'show']);
+    
+    // MikroTik Monitoring Routes
+    Route::prefix('mikrotik')->name('mikrotik.')->group(function () {
+        // System Health Monitoring
+        Route::get('/system-health', [App\Http\Controllers\MikrotikMonitorController::class, 'systemHealth'])->name('system-health');
+        Route::get('/temperature', [App\Http\Controllers\MikrotikMonitorController::class, 'temperature'])->name('temperature');
+        Route::get('/cpu-memory', [App\Http\Controllers\MikrotikMonitorController::class, 'cpuMemory'])->name('cpu-memory');
+        Route::get('/disk-usage', [App\Http\Controllers\MikrotikMonitorController::class, 'diskUsage'])->name('disk-usage');
+        
+        // Network Health Monitoring
+        Route::get('/interfaces', [App\Http\Controllers\MikrotikMonitorController::class, 'interfaces'])->name('interfaces');
+        Route::get('/bandwidth', [App\Http\Controllers\MikrotikMonitorController::class, 'bandwidth'])->name('bandwidth');
+        Route::get('/firewall', [App\Http\Controllers\MikrotikMonitorController::class, 'firewall'])->name('firewall');
+        Route::get('/routing', [App\Http\Controllers\MikrotikMonitorController::class, 'routing'])->name('routing');
+        
+        // Network Performance Tools
+        Route::match(['GET', 'POST'], '/ping-test', [App\Http\Controllers\MikrotikMonitorController::class, 'pingTest'])->name('ping-test');
+        Route::match(['GET', 'POST'], '/speed-test', [App\Http\Controllers\MikrotikMonitorController::class, 'speedTest'])->name('speed-test');
+        Route::match(['GET', 'POST'], '/bandwidth-test', [App\Http\Controllers\MikrotikMonitorController::class, 'bandwidthTest'])->name('bandwidth-test');
+        Route::get('/latency-monitor', [App\Http\Controllers\MikrotikMonitorController::class, 'latencyMonitor'])->name('latency-monitor');
+        
+        // Quality Monitoring
+        Route::get('/quality-metrics', [App\Http\Controllers\MikrotikMonitorController::class, 'qualityMetrics'])->name('quality-metrics');
+        Route::get('/packet-loss', [App\Http\Controllers\MikrotikMonitorController::class, 'packetLoss'])->name('packet-loss');
+    });
     
     // About page
     Route::get('/about', [App\Http\Controllers\AboutController::class, 'index'])->name('about');

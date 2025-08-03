@@ -147,11 +147,91 @@
             </a>
             <div id="collapseMonitoring" class="collapse" aria-labelledby="headingMonitoring" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
-                    <h6 class="collapse-header">Monitoring Tools:</h6>
-                    <a class="collapse-item" href="{{ route('ppp-secrets.active-connections') }}">User Online</a>
-                    <a class="collapse-item" href="{{ route('usage-logs.index') }}">Usage Logs</a>
-                    <a class="collapse-item" href="{{ route('usage-logs.statistics') }}">Statistics</a>
-                    <a class="collapse-item" href="{{ route('usage-logs.active-connections') }}">Active Connections</a>
+                    <h6 class="collapse-header">Connection Monitoring:</h6>
+                    <a class="collapse-item" href="{{ route('ppp-secrets.active-connections') }}">
+                        <i class="fas fa-wifi"></i> User Online
+                    </a>
+                    <a class="collapse-item" href="{{ route('usage-logs.index') }}">
+                        <i class="fas fa-history"></i> Usage Logs
+                    </a>
+                    <a class="collapse-item" href="{{ route('usage-logs.statistics') }}">
+                        <i class="fas fa-chart-pie"></i> Statistics
+                    </a>
+                    <a class="collapse-item" href="{{ route('usage-logs.active-connections') }}">
+                        <i class="fas fa-link"></i> Active Connections
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - MikroTik System Monitoring -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMikrotikMonitor" aria-expanded="true" aria-controls="collapseMikrotikMonitor">
+                <i class="fas fa-fw fa-server"></i>
+                <span>MikroTik Monitor</span>
+            </a>
+            <div id="collapseMikrotikMonitor" class="collapse" aria-labelledby="headingMikrotikMonitor" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">System Health:</h6>
+                    <a class="collapse-item" href="{{ route('mikrotik.system-health') }}">
+                        <i class="fas fa-heartbeat"></i> System Health
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.temperature') }}">
+                        <i class="fas fa-thermometer-half"></i> Temperature
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.cpu-memory') }}">
+                        <i class="fas fa-microchip"></i> CPU & Memory
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.disk-usage') }}">
+                        <i class="fas fa-hdd"></i> Disk Usage
+                    </a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Network Health:</h6>
+                    <a class="collapse-item" href="{{ route('mikrotik.interfaces') }}">
+                        <i class="fas fa-ethernet"></i> Interfaces
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.bandwidth') }}">
+                        <i class="fas fa-tachometer-alt"></i> Bandwidth Monitor
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.firewall') }}">
+                        <i class="fas fa-shield-alt"></i> Firewall Stats
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.routing') }}">
+                        <i class="fas fa-route"></i> Routing Table
+                    </a>
+                </div>
+            </div>
+        </li>
+
+        <!-- Nav Item - Network Performance -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseNetworkPerf" aria-expanded="true" aria-controls="collapseNetworkPerf">
+                <i class="fas fa-fw fa-signal"></i>
+                <span>Network Performance</span>
+            </a>
+            <div id="collapseNetworkPerf" class="collapse" aria-labelledby="headingNetworkPerf" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <h6 class="collapse-header">Performance Tools:</h6>
+                    <a class="collapse-item" href="{{ route('mikrotik.ping-test') }}">
+                        <i class="fas fa-broadcast-tower"></i> Ping Test
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.speed-test') }}">
+                        <i class="fas fa-stopwatch"></i> Speed Test
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.bandwidth-test') }}">
+                        <i class="fas fa-chart-line"></i> Bandwidth Test
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.latency-monitor') }}">
+                        <i class="fas fa-clock"></i> Latency Monitor
+                    </a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Quality Monitoring:</h6>
+                    <a class="collapse-item" href="{{ route('mikrotik.quality-metrics') }}">
+                        <i class="fas fa-chart-bar"></i> Quality Metrics
+                    </a>
+                    <a class="collapse-item" href="{{ route('mikrotik.packet-loss') }}">
+                        <i class="fas fa-exclamation-triangle"></i> Packet Loss
+                    </a>
                 </div>
             </div>
         </li>

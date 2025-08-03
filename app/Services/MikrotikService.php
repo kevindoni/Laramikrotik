@@ -21,7 +21,19 @@ class MikrotikService
      */
     public function __construct()
     {
-        $this->setting = MikrotikSetting::getActive();
+        // Don't load setting in constructor to avoid database calls during app boot
+        // Call loadActiveSetting() method when needed instead
+    }
+
+    /**
+     * Load active MikroTik setting.
+     */
+    public function loadActiveSetting()
+    {
+        if (!$this->setting) {
+            $this->setting = MikrotikSetting::getActive();
+        }
+        return $this->setting;
     }
 
     /**
@@ -38,6 +50,10 @@ class MikrotikService
      */
     public function connect()
     {
+        if (!$this->setting) {
+            $this->loadActiveSetting();
+        }
+        
         if (!$this->setting) {
             throw new Exception('No active Mikrotik setting found.');
         }
@@ -480,10 +496,8 @@ class MikrotikService
             ]);
             
             $query = new Query('/ppp/secret/print');
-            if ($count > 0) {
-                $query->equal('count', $count);
-                $query->equal('from', $start);
-            }
+            // Note: RouterOS API for /ppp/secret/print doesn't support count/from parameters
+            // We'll get all secrets and handle pagination in PHP if needed
             
             $secrets = $this->client->query($query)->read();
             
@@ -544,117 +558,173 @@ class MikrotikService
     /**
      * Get all PPP secrets with batch processing for better reliability
      */
-    public function getAllPppSecrets($batchSize = 20)
+    /**
+     * Get all PPP secrets from MikroTik with enhanced timeout handling.
+     */
+    public function getAllPppSecrets()
     {
         // Ensure we're connected first
         if (!$this->isConnected()) {
             $this->connect();
         }
-
-        $allSecrets = [];
-        $start = 0;
+        
         $maxAttempts = 3;
+        $lastException = null;
         
-        logger()->info("Starting batched retrieval of all PPP secrets", [
-            'batch_size' => $batchSize,
-            'host' => $this->setting->host ?? 'unknown'
-        ]);
-        
-        try {
-            do {
-                $batch = null;
-                $lastException = null;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                // Ensure we still have a client connection
+                if (!$this->client) {
+                    $this->connect();
+                }
                 
-                // Retry each batch up to maxAttempts times
-                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-                    try {
-                        // Ensure connection is still active before each batch
-                        if (!$this->client) {
-                            logger()->info("Reconnecting before batch", ['start' => $start, 'attempt' => $attempt]);
-                            $this->connect();
-                        }
-                        
-                        $batch = $this->getPppSecretsBatch($start, $batchSize);
-                        break; // Success, exit retry loop
-                        
-                    } catch (Exception $e) {
-                        $lastException = $e;
-                        
-                        logger()->warning("Batch retrieval failed", [
-                            'start' => $start,
-                            'attempt' => $attempt,
-                            'error' => $e->getMessage()
-                        ]);
-                        
-                        // If it's a timeout or connection error and we have more attempts, retry
-                        if (($attempt < $maxAttempts) && 
-                            (strpos($e->getMessage(), 'timeout') !== false || 
-                             strpos($e->getMessage(), 'Stream timed out') !== false ||
-                             strpos($e->getMessage(), 'Error reading') !== false)) {
-                            
-                            // Reset connection and wait before retry
-                            $this->client = null;
-                            sleep($attempt * 2); // 2s, 4s delays
-                            continue;
-                        }
-                        
-                        break; // Non-retryable error or max attempts reached
+                // First, try to get count to see if there are any secrets
+                logger()->info("Checking PPP secrets count", [
+                    'attempt' => $attempt,
+                    'host' => $this->setting->host ?? 'unknown'
+                ]);
+                
+                $countQuery = new Query('/ppp/secret/print');
+                $countQuery->equal('count-only', '');
+                $countResult = $this->client->query($countQuery)->read();
+                
+                // Debug log the count result structure
+                logger()->info("Count result debug", [
+                    'raw_result' => $countResult,
+                    'result_structure' => is_array($countResult) ? array_keys($countResult) : 'not array',
+                    'first_element' => isset($countResult[0]) ? $countResult[0] : 'no first element'
+                ]);
+                
+                $secretCount = 0;
+                if (isset($countResult['after']['ret'])) {
+                    $secretCount = (int)$countResult['after']['ret'];
+                } elseif (isset($countResult[0]['after']['ret'])) {
+                    $secretCount = (int)$countResult[0]['after']['ret'];
+                } elseif (isset($countResult[0]['ret'])) {
+                    $secretCount = (int)$countResult[0]['ret'];
+                }
+                
+                logger()->info("Found PPP secrets", [
+                    'count' => $secretCount,
+                    'host' => $this->setting->host ?? 'unknown'
+                ]);
+                
+                if ($secretCount === 0) {
+                    logger()->info('No PPP secrets found on MikroTik');
+                    return [];
+                }
+                
+                // If there are too many secrets, warn about potential timeout
+                if ($secretCount > 50) {
+                    logger()->warning('Large number of PPP secrets detected', [
+                        'count' => $secretCount,
+                        'recommendation' => 'Consider implementing pagination'
+                    ]);
+                }
+                
+                // Set a longer timeout for data retrieval operations
+                if ($this->client && method_exists($this->client, 'setTimeout')) {
+                    $timeout = $secretCount > 20 ? 180 : 60; // Longer timeout for many secrets
+                    $this->client->setTimeout($timeout);
+                }
+                
+                logger()->info("Attempting to retrieve PPP secrets", [
+                    'attempt' => $attempt,
+                    'count' => $secretCount,
+                    'host' => $this->setting->host ?? 'unknown',
+                    'timeout' => $timeout ?? 60
+                ]);
+                
+                // Try simple query without proplist first
+                $query = new Query('/ppp/secret/print');
+                
+                try {
+                    $secrets = $this->client->query($query)->read();
+                    
+                    // Log successful retrieval for debugging
+                    logger()->info('Successfully retrieved PPP secrets from MikroTik', [
+                        'count' => count($secrets),
+                        'host' => $this->setting->host ?? 'unknown',
+                        'attempt' => $attempt,
+                        'method' => 'simple'
+                    ]);
+                    
+                    return $secrets;
+                    
+                } catch (Exception $e) {
+                    // If simple query fails, it might be a timeout issue
+                    if (strpos($e->getMessage(), 'timeout') !== false || 
+                        strpos($e->getMessage(), 'Stream timed out') !== false) {
+                        throw $e; // Re-throw timeout errors to trigger retry logic
+                    }
+                    
+                    // For other errors, try with proplist to reduce data
+                    logger()->info('Simple query failed, trying with proplist', [
+                        'error' => $e->getMessage(),
+                        'attempt' => $attempt
+                    ]);
+                    
+                    $query2 = new Query('/ppp/secret/print');
+                    $query2->equal('proplist', 'name,password,profile,service,comment,disabled');
+                    $secrets = $this->client->query($query2)->read();
+                    
+                    // Log successful retrieval for debugging
+                    logger()->info('Successfully retrieved PPP secrets from MikroTik', [
+                        'count' => count($secrets),
+                        'host' => $this->setting->host ?? 'unknown',
+                        'attempt' => $attempt,
+                        'method' => 'proplist'
+                    ]);
+                    
+                    return $secrets;
+                }
+                
+            } catch (Exception $e) {
+                $lastException = $e;
+                
+                // Log the specific error for debugging
+                logger()->error('Failed to get PPP secrets from MikroTik', [
+                    'error' => $e->getMessage(),
+                    'attempt' => $attempt,
+                    'host' => $this->setting->host ?? 'unknown',
+                    'error_type' => get_class($e)
+                ]);
+                
+                // For timeout errors, try to reconnect on next attempt
+                if (strpos($e->getMessage(), 'timeout') !== false || 
+                    strpos($e->getMessage(), 'Stream timed out') !== false ||
+                    strpos($e->getMessage(), 'Error reading') !== false) {
+                    
+                    logger()->info('Detected timeout/connection error, will reconnect on next attempt', [
+                        'attempt' => $attempt,
+                        'max_attempts' => $maxAttempts
+                    ]);
+                    
+                    // Reset connection for next attempt
+                    $this->client = null;
+                    
+                    if ($attempt < $maxAttempts) {
+                        sleep($attempt * 3); // Progressive delay: 3s, 6s
+                        continue;
                     }
                 }
                 
-                // If we couldn't get this batch after all attempts, throw error
-                if ($batch === null) {
-                    throw $lastException ?: new Exception('Failed to retrieve batch after all attempts');
-                }
-                
-                // If batch is empty, we're done
-                if (empty($batch)) {
-                    logger()->info("Reached end of secrets - empty batch", ['start' => $start]);
-                    break;
-                }
-                
-                $allSecrets = array_merge($allSecrets, $batch);
-                $start += $batchSize;
-                
-                logger()->info("Retrieved batch successfully", [
-                    'batch_count' => count($batch),
-                    'total_so_far' => count($allSecrets),
-                    'next_start' => $start
-                ]);
-                
-                // Small delay between batches to prevent overload
-                if (count($batch) === $batchSize) {
-                    usleep(200000); // 0.2 second
-                }
-                
-            } while (count($batch) === $batchSize); // Continue if we got a full batch
-            
-            logger()->info("Completed batched retrieval of PPP secrets", [
-                'total_count' => count($allSecrets),
-                'batch_size' => $batchSize,
-                'host' => $this->setting->host ?? 'unknown'
-            ]);
-            
-            return $allSecrets;
-            
-        } catch (Exception $e) {
-            logger()->error('Failed to get all PPP secrets with batching', [
-                'error' => $e->getMessage(),
-                'batch_size' => $batchSize,
-                'secrets_retrieved' => count($allSecrets),
-                'host' => $this->setting->host ?? 'unknown'
-            ]);
-            
-            // Provide more specific error message for timeout issues
-            if (strpos($e->getMessage(), 'timeout') !== false || 
-                strpos($e->getMessage(), 'Stream timed out') !== false) {
-                throw new Exception('Failed to get PPP secrets: Connection timed out during batch retrieval. The MikroTik router may be slow to respond or overloaded. Try again later or contact your network administrator.');
+                // For other errors, stop immediately
+                break;
             }
-            
-            throw new Exception('Failed to get all PPP secrets: ' . $e->getMessage());
         }
+        
+        // If we get here, all attempts failed
+        $errorMsg = $lastException ? $lastException->getMessage() : 'Unknown error';
+        
+        // Provide user-friendly error messages for common timeout issues
+        if (strpos($errorMsg, 'timeout') !== false || 
+            strpos($errorMsg, 'Stream timed out') !== false) {
+            throw new Exception('Failed to get PPP secrets: The MikroTik router has a large number of PPP secrets and queries are timing out. This may be due to system load or database performance issues on the router. Consider reducing the number of secrets or contact your network administrator to optimize the router performance.');
+        }
+        
+        throw new Exception('Failed to get PPP secrets: ' . $errorMsg);
     }
-
     /**
      * Create a PPP profile on Mikrotik.
      */
@@ -1161,17 +1231,45 @@ class MikrotikService
         $this->ensureConnected();
 
         try {
-            // Create query for active PPP connections
+            // Create query for active PPP connections with limited results
             $query = new Query('/ppp/active/print');
+            
+            // Add count limit to prevent timeout on large datasets
+            $query->equal('count-only', '');
+            $countResult = $this->client->query($query)->read();
+            $totalCount = isset($countResult[0]['ret']) ? (int) $countResult[0]['ret'] : 0;
+            
+            logger()->info('PPP active connections count check', ['total' => $totalCount]);
+            
+            // If too many connections, limit the result to prevent timeout
+            $query = new Query('/ppp/active/print');
+            if ($totalCount > 50) {
+                // Limit results to prevent timeout
+                $query->equal('count', '50');
+                logger()->warning('Limiting PPP active query due to large dataset', ['total' => $totalCount]);
+            }
             
             logger()->info('Getting active PPP connections');
             
-            // Execute query with timeout handling
+            // Execute query with timeout protection
+            $startTime = microtime(true);
             $result = $this->client->query($query)->read();
+            $endTime = microtime(true);
+            $executionTime = round(($endTime - $startTime) * 1000, 2); // in milliseconds
             
             logger()->info('Successfully retrieved active PPP connections', [
-                'count' => count($result ?? [])
+                'count' => count($result ?? []),
+                'execution_time_ms' => $executionTime,
+                'limited' => $totalCount > 50
             ]);
+            
+            // If query took too long, warn about it
+            if ($executionTime > 5000) { // 5 seconds
+                logger()->warning('Active PPP connections query took too long', [
+                    'execution_time_ms' => $executionTime,
+                    'recommendation' => 'Consider optimizing MikroTik performance'
+                ]);
+            }
             
             return $result ?? [];
             
@@ -1181,15 +1279,90 @@ class MikrotikService
             
             logger()->warning('Failed to get active PPP connections', [
                 'error' => $errorMsg,
-                'error_type' => strpos($errorMsg, 'timeout') !== false ? 'timeout' : 'other'
+                'error_type' => strpos($errorMsg, 'timeout') !== false ? 'timeout' : 'other',
+                'recommendation' => 'Check MikroTik router performance and network connection'
             ]);
             
             // For timeout errors, provide more specific message
-            if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'Stream timed out') !== false) {
-                throw new Exception('Failed to get active PPP connections: Query timed out. Router may be busy or connection is slow.');
+            if (strpos($errorMsg, 'timeout') !== false || 
+                strpos($errorMsg, 'Stream timed out') !== false ||
+                strpos($errorMsg, 'timed out') !== false) {
+                throw new Exception('Router response timeout - please try again or check router performance');
             }
             
             throw new Exception('Failed to get active PPP connections: ' . $errorMsg);
+        }
+    }
+
+    /**
+     * Test basic connection with simple query.
+     */
+    public function testConnection()
+    {
+        $this->ensureConnected();
+
+        try {
+            // Simple system resource query for testing
+            $query = new Query('/system/resource/print');
+            
+            $startTime = microtime(true);
+            $result = $this->client->query($query)->read();
+            $endTime = microtime(true);
+            $executionTime = round(($endTime - $startTime) * 1000, 2);
+            
+            logger()->info('Connection test successful', [
+                'execution_time_ms' => $executionTime
+            ]);
+            
+            return [
+                'success' => true,
+                'execution_time' => $executionTime,
+                'data' => $result
+            ];
+            
+        } catch (Exception $e) {
+            logger()->error('Connection test failed', [
+                'error' => $e->getMessage()
+            ]);
+            
+            throw new Exception('Connection test failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get lightweight PPP connection count.
+     */
+    public function getPppConnectionCount()
+    {
+        $this->ensureConnected();
+
+        try {
+            $query = new Query('/ppp/active/print');
+            $query->equal('count-only', '');
+            
+            $startTime = microtime(true);
+            $result = $this->client->query($query)->read();
+            $endTime = microtime(true);
+            $executionTime = round(($endTime - $startTime) * 1000, 2);
+            
+            $count = isset($result[0]['ret']) ? (int) $result[0]['ret'] : 0;
+            
+            logger()->info('PPP connection count retrieved', [
+                'count' => $count,
+                'execution_time_ms' => $executionTime
+            ]);
+            
+            return [
+                'count' => $count,
+                'execution_time' => $executionTime
+            ];
+            
+        } catch (Exception $e) {
+            logger()->error('Failed to get PPP connection count', [
+                'error' => $e->getMessage()
+            ]);
+            
+            throw new Exception('Failed to get connection count: ' . $e->getMessage());
         }
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\MikrotikService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Exception;
 
 class PppSecret extends Model
@@ -117,6 +118,11 @@ class PppSecret extends Model
     protected function shouldSyncToMikrotik()
     {
         try {
+            // Check if database tables exist first
+            if (!app()->bound('db') || !Schema::hasTable('mikrotik_settings')) {
+                return false;
+            }
+            
             $activeSetting = MikrotikSetting::getActive();
             return $activeSetting && $activeSetting->getConnectionStatus() === 'connected';
         } catch (Exception $e) {
@@ -232,9 +238,23 @@ class PppSecret extends Model
     }
 
     /**
-     * Get real-time connection status from MikroTik.
+     * Get real-time connection status from MikroTik with caching.
      */
     public function getRealTimeConnectionStatus()
+    {
+        // Use cache to avoid frequent MikroTik queries
+        $cacheKey = "ppp_status_{$this->username}";
+        $cacheTimeout = 30; // 30 seconds cache
+        
+        return cache()->remember($cacheKey, $cacheTimeout, function() {
+            return $this->fetchRealTimeConnectionStatus();
+        });
+    }
+    
+    /**
+     * Fetch real-time connection status from MikroTik (actual query).
+     */
+    protected function fetchRealTimeConnectionStatus()
     {
         try {
             // Get the active MikroTik setting
@@ -263,11 +283,15 @@ class PppSecret extends Model
                         'uptime' => $connection['uptime'] ?? null,
                         'caller_id' => $connection['caller-id'] ?? null,
                         'service' => $connection['service'] ?? null,
+                        'cached_at' => now()->toISOString(),
                     ];
                 }
             }
 
-            return ['status' => 'disconnected'];
+            return [
+                'status' => 'disconnected',
+                'cached_at' => now()->toISOString(),
+            ];
         } catch (Exception $e) {
             // Log error and check if it's a timeout
             logger()->error('Failed to get real-time connection status', [
@@ -275,13 +299,38 @@ class PppSecret extends Model
                 'error' => $e->getMessage()
             ]);
             
-            // For timeout errors, return timeout status instead of null
-            if (strpos($e->getMessage(), 'timeout') !== false || strpos($e->getMessage(), 'timed out') !== false) {
-                return ['status' => 'timeout'];
+            // For timeout errors, return timeout status with helpful message
+            if (strpos($e->getMessage(), 'timeout') !== false || 
+                strpos($e->getMessage(), 'timed out') !== false ||
+                strpos($e->getMessage(), 'Router response timeout') !== false) {
+                return [
+                    'status' => 'timeout',
+                    'message' => 'Router is responding slowly. This may be due to high router load or network issues.',
+                    'suggestion' => 'Try refreshing in a few moments or check router performance.',
+                    'cached_at' => now()->toISOString(),
+                ];
             }
             
             // For other errors, return null
             return null;
         }
+    }
+    
+    /**
+     * Clear the cached real-time connection status.
+     */
+    public function clearConnectionStatusCache()
+    {
+        $cacheKey = "ppp_status_{$this->username}";
+        cache()->forget($cacheKey);
+    }
+    
+    /**
+     * Force refresh real-time connection status (bypass cache).
+     */
+    public function refreshRealTimeConnectionStatus()
+    {
+        $this->clearConnectionStatusCache();
+        return $this->getRealTimeConnectionStatus();
     }
 }

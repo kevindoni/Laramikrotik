@@ -2,129 +2,147 @@
 
 namespace App\Console\Commands;
 
-use App\Models\MikrotikSetting;
-use App\Services\MikrotikService;
 use Illuminate\Console\Command;
-use Exception;
+use App\Services\MikrotikService;
+use App\Models\MikrotikSetting;
 
 class TestMikrotikConnection extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'mikrotik:test';
+    protected $signature = 'mikrotik:test-connection 
+                            {--timeout=10 : Connection timeout in seconds}
+                            {--detailed : Show detailed connection info}';
+    
+    protected $description = 'Test MikroTik connection and diagnose network issues';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Test MikroTik connection and show diagnostics';
-
-    /**
-     * Execute the console command.
-     */
     public function handle()
     {
-        $this->info('🔍 Testing MikroTik Connection...');
-        $this->newLine();
-
-        // Check if there are any MikroTik settings
-        $settings = MikrotikSetting::all();
+        $timeout = (int) $this->option('timeout');
+        $verbose = $this->option('detailed');
         
-        if ($settings->isEmpty()) {
-            $this->error('❌ No MikroTik settings found!');
-            $this->info('💡 Please create a MikroTik setting first at: /mikrotik-settings');
-            return 1;
-        }
+        $this->info('🔍 Testing MikroTik connection...');
 
-        $this->info('📋 Available MikroTik Settings:');
-        foreach ($settings as $setting) {
-            $status = $setting->is_active ? '✅ Active' : '⏸️  Inactive';
-            $this->line("  • {$setting->name} ({$setting->host}:{$setting->port}) - {$status}");
-        }
-        $this->newLine();
-
-        // Get active setting
-        $activeSetting = MikrotikSetting::getActive();
-        
-        if (!$activeSetting) {
-            $this->error('❌ No active MikroTik setting found!');
-            $this->info('💡 Please activate a MikroTik setting first.');
-            return 1;
-        }
-
-        $this->info("🎯 Testing active setting: {$activeSetting->name}");
-        $this->info("🔗 Host: {$activeSetting->host}:{$activeSetting->port}");
-        $this->info("👤 Username: {$activeSetting->username}");
-        $this->info("🔒 SSL: " . ($activeSetting->use_ssl ? 'Enabled' : 'Disabled'));
-        $this->newLine();
-
-        // Test connection
         try {
-            $mikrotikService = app(MikrotikService::class);
-            $mikrotikService->setSetting($activeSetting);
+            // Get active setting
+            $setting = MikrotikSetting::where('is_active', true)->first();
             
-            $this->info('🔄 Attempting to connect...');
-            $mikrotikService->connect();
+            if (!$setting) {
+                $this->error('❌ No active MikroTik setting found');
+                return 1;
+            }
+
+            if ($verbose) {
+                $this->info("📡 Configuration:");
+                $this->info("   Name: {$setting->name}");
+                $this->info("   Host: {$setting->host}");
+                $this->info("   Port: {$setting->port}");
+                $this->info("   Username: {$setting->username}");
+                $this->info("   SSL: " . ($setting->use_ssl ? 'Yes' : 'No'));
+                $this->info("   Timeout: {$timeout}s");
+                $this->newLine();
+            }
+
+            $this->info("🔌 Attempting connection...");
             
-            $this->info('✅ Connection successful!');
-            $this->newLine();
+            $mikrotikService = new MikrotikService();
+            $mikrotikService->setSetting($setting);
             
-            // Get system information
-            $this->info('📊 Getting system information...');
+            $startTime = microtime(true);
+            
             try {
-                $identity = $mikrotikService->getSystemIdentity();
-                $resources = $mikrotikService->getSystemResources();
+                $mikrotikService->connect($timeout);
+                $connectTime = round((microtime(true) - $startTime) * 1000, 2);
+                $this->info("✅ Connection successful ({$connectTime}ms)");
                 
-                $this->info("🏷️  Router Identity: {$identity}");
-                $this->info("💾 Board Name: {$resources['board-name']}");
-                $this->info("🔢 Version: {$resources['version']}");
-                $this->info("⚡ CPU Load: {$resources['cpu-load']}%");
-                $this->info("💿 Free Memory: " . round($resources['free-memory'] / 1024 / 1024, 2) . " MB");
-                $this->info("💾 Total Memory: " . round($resources['total-memory'] / 1024 / 1024, 2) . " MB");
+                // Test basic query
+                $this->info("📊 Testing basic system query...");
+                
+                try {
+                    $testResult = $mikrotikService->testConnection();
+                    $this->info("✅ System test successful ({$testResult['execution_time']}ms)");
+                    
+                    // Test PPP connection count (lightweight)
+                    $this->info("🔢 Testing PPP connection count...");
+                    $countResult = $mikrotikService->getPppConnectionCount();
+                    $this->info("✅ PPP count successful ({$countResult['execution_time']}ms)");
+                    $this->info("📈 Found {$countResult['count']} active PPP connections");
+                    
+                    // Only try full PPP query if count is reasonable
+                    if ($countResult['count'] <= 20) {
+                        $this->info("📊 Testing full PPP query...");
+                        $queryStart = microtime(true);
+                        
+                        try {
+                            $activeConnections = $mikrotikService->getActivePppConnections();
+                            $queryTime = round((microtime(true) - $queryStart) * 1000, 2);
+                            $connectionCount = count($activeConnections);
+                            
+                            $this->info("✅ Full query successful ({$queryTime}ms)");
+                            $this->info("📈 Retrieved {$connectionCount} connection details");
+                            
+                            if ($verbose && $connectionCount > 0) {
+                                $this->info("\n📋 Active connections:");
+                                $headers = ['Username', 'IP Address', 'Uptime', 'Bytes In', 'Bytes Out'];
+                                $rows = [];
+                                
+                                foreach (array_slice($activeConnections, 0, 5) as $conn) {
+                                    $rows[] = [
+                                        $conn['name'] ?? 'N/A',
+                                        $conn['address'] ?? 'N/A',
+                                        $conn['uptime'] ?? 'N/A',
+                                        isset($conn['bytes-in']) ? number_format($conn['bytes-in']) : 'N/A',
+                                        isset($conn['bytes-out']) ? number_format($conn['bytes-out']) : 'N/A',
+                                    ];
+                                }
+                                
+                                $this->table($headers, $rows);
+                                
+                                if ($connectionCount > 5) {
+                                    $this->info("... and " . ($connectionCount - 5) . " more connections");
+                                }
+                            }
+                            
+                        } catch (Exception $e) {
+                            $this->warn("⚠️ Full PPP query failed: " . $e->getMessage());
+                            $this->info("💡 But basic connectivity is working - using fallback sync mode");
+                        }
+                        
+                    } else {
+                        $this->warn("⚠️ Large dataset ({$countResult['count']} connections) - skipping full query to prevent timeout");
+                        $this->info("💡 System will use fallback sync mode for this router");
+                    }
+                    
+                } catch (Exception $e) {
+                    $this->error("❌ Query failed: " . $e->getMessage());
+                    $this->warn("💡 Connection works but data retrieval failed");
+                    return 2;
+                }
+                
+                // Performance assessment
+                if ($connectTime > 3000) {
+                    $this->warn("⚠️ Slow connection ({$connectTime}ms) - consider checking network");
+                }
+                
+                $this->info("\n🎉 Connection test completed successfully!");
+                return 0;
                 
             } catch (Exception $e) {
-                $this->warn("⚠️  Could not get system info: {$e->getMessage()}");
-            }
-            
-            $this->newLine();
-            
-            // Test PPP functionality
-            $this->info('🔍 Testing PPP functionality...');
-            try {
-                $profiles = $mikrotikService->getPppProfiles();
-                $secrets = $mikrotikService->getPppSecrets();
-                $activeConnections = $mikrotikService->getActivePppConnections();
+                $connectTime = round((microtime(true) - $startTime) * 1000, 2);
+                $this->error("❌ Connection failed after {$connectTime}ms");
+                $this->error("Error: " . $e->getMessage());
                 
-                $this->info("📁 PPP Profiles: " . count($profiles));
-                $this->info("🔑 PPP Secrets: " . count($secrets));
-                $this->info("🌐 Active Connections: " . count($activeConnections));
+                // Provide troubleshooting tips
+                $this->warn("\n🔧 Troubleshooting tips:");
+                $this->warn("1. Check if MikroTik router is online");
+                $this->warn("2. Verify host and port settings");
+                $this->warn("3. Check firewall rules on MikroTik");
+                $this->warn("4. Ensure API service is enabled");
+                $this->warn("5. Try increasing timeout with --timeout=30");
                 
-            } catch (Exception $e) {
-                $this->warn("⚠️  Could not get PPP info: {$e->getMessage()}");
+                return 3;
             }
-            
-            $this->newLine();
-            $this->info('🎉 All tests completed successfully!');
-            return 0;
             
         } catch (Exception $e) {
-            $this->error('❌ Connection failed!');
-            $this->error("Error: {$e->getMessage()}");
-            $this->newLine();
-            
-            // Provide troubleshooting tips
-            $this->info('💡 Troubleshooting Tips:');
-            $this->line('  • Check if MikroTik is powered on and accessible');
-            $this->line('  • Verify network connectivity to MikroTik');
-            $this->line('  • Check if API service is enabled: /ip service enable api');
-            $this->line('  • Verify username and password');
-            $this->line('  • Check firewall rules on MikroTik');
-            $this->line('  • Try different port (8728 for non-SSL, 8729 for SSL)');
-            
+            $this->error("❌ Test failed: " . $e->getMessage());
             return 1;
         }
     }

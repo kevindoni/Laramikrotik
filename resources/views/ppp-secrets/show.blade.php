@@ -237,11 +237,13 @@
                                     @endif
                                 </table>
                             @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
-                                {{-- For timeout, show historical data with warning --}}
                                 <div class="alert alert-warning alert-sm mb-3">
                                     <i class="fas fa-exclamation-triangle mr-1"></i>
                                     <strong>{{ __('Real-time data unavailable') }}</strong><br>
-                                    {{ __('MikroTik router is responding slowly. Showing last known connection data instead.') }}
+                                    {{ $realTimeStatus['message'] ?? __('MikroTik router is responding slowly. Showing last known connection data instead.') }}
+                                    @if(isset($realTimeStatus['suggestion']))
+                                        <br><small>{{ $realTimeStatus['suggestion'] }}</small>
+                                    @endif
                                 </div>
                                 @if($pppSecret->latestUsageLog)
                                     <table class="table table-sm table-borderless">
@@ -258,13 +260,16 @@
                                             <td>{{ $pppSecret->latestUsageLog->session_duration ?: __('N/A') }}</td>
                                         </tr>
                                         <tr>
-                                            <th>{{ __('Last updated') }}</th>
-                                            <td>{{ now()->format('H:i:s') }}</td>
+                                            <th>{{ __('Data Source') }}</th>
+                                            <td><small class="text-muted">{{ __('Historical data (last updated: ') }}{{ $pppSecret->latestUsageLog->updated_at->format('d M Y H:i') }})</small></td>
                                         </tr>
                                     </table>
                                 @else
                                     <div class="text-center py-2">
                                         <p class="text-muted">{{ __('No historical connection data available.') }}</p>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="retryConnection()">
+                                            <i class="fas fa-sync-alt"></i> {{ __('Retry Connection') }}
+                                        </button>
                                     </div>
                                 @endif
                             @elseif($pppSecret->latestUsageLog)
@@ -296,7 +301,12 @@
                     </div>
                     @if($realTimeStatus)
                         <div class="text-right mt-2">
-                            <small class="text-muted">{{ __('Last updated: ') }}{{ now()->format('H:i:s') }}</small>
+                            <small class="text-muted">
+                                {{ __('Last updated: ') }}{{ now()->format('H:i:s') }}
+                                @if(isset($realTimeStatus['cached_at']))
+                                    ({{ __('cached data') }})
+                                @endif
+                            </small>
                             @if($realTimeStatus['status'] === 'timeout')
                                 <span class="badge badge-warning ml-2">
                                     <i class="fas fa-clock mr-1"></i>{{ __('Auto-refresh in') }} <span id="refresh-countdown">60s</span>
@@ -305,6 +315,11 @@
                             <button class="btn btn-sm btn-outline-secondary ml-2" onclick="window.location.reload()">
                                 <i class="fas fa-sync-alt"></i> {{ __('Refresh') }}
                             </button>
+                            @if($realTimeStatus['status'] === 'timeout')
+                                <button class="btn btn-sm btn-outline-warning ml-1" onclick="forceRefresh()">
+                                    <i class="fas fa-bolt"></i> {{ __('Force Refresh') }}
+                                </button>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -549,27 +564,21 @@
         }, 60000); // 60 seconds
 
         // Add visual countdown
+        let countdownSeconds = 60;
         function updateCountdown() {
             const countdownElement = document.getElementById('refresh-countdown');
-            if (countdownElement) {
-                let seconds = parseInt(countdownElement.dataset.seconds) - 1;
-                if (seconds > 0) {
-                    countdownElement.dataset.seconds = seconds;
-                    countdownElement.textContent = seconds + 's';
-                    setTimeout(updateCountdown, 1000);
-                } else {
-                    countdownElement.textContent = 'Refreshing...';
-                }
+            if (countdownElement && countdownSeconds > 0) {
+                countdownSeconds--;
+                countdownElement.textContent = countdownSeconds + 's';
+                setTimeout(updateCountdown, 1000);
+            } else if (countdownElement) {
+                countdownElement.textContent = 'Refreshing...';
             }
         }
 
-        // Start countdown if element exists
+        // Start countdown immediately
         document.addEventListener('DOMContentLoaded', function() {
-            const countdownElement = document.getElementById('refresh-countdown');
-            if (countdownElement) {
-                countdownElement.dataset.seconds = '60';
-                updateCountdown();
-            }
+            updateCountdown();
         });
 
         // Clear timer if user manually refreshes
@@ -577,6 +586,34 @@
             clearTimeout(refreshTimer);
         });
     @endif
+
+    // Retry connection function
+    function retryConnection() {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ __('Retrying...') }}';
+        button.disabled = true;
+        
+        // Reload page after a short delay to show the loading state
+        setTimeout(function() {
+            window.location.reload();
+        }, 500);
+    }
+
+    // Force refresh function (bypasses cache)
+    function forceRefresh() {
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ __('Force Refreshing...') }}';
+        button.disabled = true;
+        
+        // Add cache-busting parameter and reload
+        const url = new URL(window.location);
+        url.searchParams.set('force_refresh', Date.now());
+        window.location.href = url.toString();
+    }
 
     // Delete confirmation with MikroTik sync option
     function confirmDelete() {

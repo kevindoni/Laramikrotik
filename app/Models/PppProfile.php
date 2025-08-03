@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\MikrotikService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Exception;
 
 class PppProfile extends Model
@@ -116,6 +117,11 @@ class PppProfile extends Model
     protected function shouldSyncToMikrotik()
     {
         try {
+            // Check if database tables exist first
+            if (!app()->bound('db') || !Schema::hasTable('mikrotik_settings')) {
+                return false;
+            }
+            
             $activeSetting = MikrotikSetting::getActive();
             return $activeSetting && $activeSetting->getConnectionStatus() === 'connected';
         } catch (Exception $e) {

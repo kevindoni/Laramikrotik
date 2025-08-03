@@ -207,24 +207,42 @@
                                 @endif
                             </td>
                             <td>
-                                <small><strong>Start:</strong> {{ $log->connect_time->format('d/m/Y H:i:s') }}</small>
-                                @if($log->disconnect_time)
-                                    <br><small><strong>End:</strong> {{ $log->disconnect_time->format('d/m/Y H:i:s') }}</small>
+                                @if($log->connected_at)
+                                    <small><strong>Start:</strong> {{ $log->connected_at->format('d/m/Y H:i:s') }}</small>
+                                @else
+                                    <small class="text-muted">No connection time</small>
+                                @endif
+                                
+                                @if($log->disconnected_at)
+                                    <br><small><strong>End:</strong> {{ $log->disconnected_at->format('d/m/Y H:i:s') }}</small>
                                 @else
                                     <br><small class="text-success"><strong>Status:</strong> Active</small>
                                 @endif
-                                @if($log->connection_type)
-                                    <br><span class="badge badge-info">{{ strtoupper($log->connection_type) }}</span>
+                                
+                                @if($log->session_id)
+                                    <br><span class="badge badge-info">{{ substr($log->session_id, 0, 8) }}...</span>
                                 @endif
                             </td>
                             <td>
-                                @if($log->session_time)
+                                @if($log->uptime)
+                                    <strong>{{ $log->uptime }}</strong>
+                                @elseif($log->connected_at && $log->disconnected_at)
                                     @php
-                                        $hours = floor($log->session_time / 3600);
-                                        $minutes = floor(($log->session_time % 3600) / 60);
-                                        $seconds = $log->session_time % 60;
+                                        $duration = $log->connected_at->diffInSeconds($log->disconnected_at);
+                                        $hours = floor($duration / 3600);
+                                        $minutes = floor(($duration % 3600) / 60);
+                                        $seconds = $duration % 60;
                                     @endphp
                                     <strong>{{ sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds) }}</strong>
+                                @elseif($log->connected_at)
+                                    @php
+                                        $duration = $log->connected_at->diffInSeconds(now());
+                                        $hours = floor($duration / 3600);
+                                        $minutes = floor(($duration % 3600) / 60);
+                                        $seconds = $duration % 60;
+                                    @endphp
+                                    <strong class="text-success">{{ sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds) }}</strong>
+                                    <br><small class="text-success">Live</small>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
@@ -239,25 +257,25 @@
                                 @endif
                             </td>
                             <td>
-                                @if($log->framed_ip_address)
-                                    <code>{{ $log->framed_ip_address }}</code>
+                                @if($log->ip_address)
+                                    <code>{{ $log->ip_address }}</code>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
-                                @if($log->calling_station_id)
-                                    <br><small class="text-muted">{{ $log->calling_station_id }}</small>
+                                @if($log->caller_id)
+                                    <br><small class="text-muted">{{ $log->caller_id }}</small>
                                 @endif
                             </td>
                             <td>
-                                @if($log->disconnect_time)
+                                @if($log->disconnected_at)
                                     <span class="badge badge-secondary">Disconnected</span>
-                                    @if($log->terminate_cause)
-                                        <br><small class="text-muted">{{ $log->terminate_cause }}</small>
+                                    @if($log->terminate_reason)
+                                        <br><small class="text-muted">{{ $log->terminate_reason }}</small>
                                     @endif
                                 @else
                                     <span class="badge badge-success">Active</span>
-                                    @if($log->connect_time->diffInMinutes(now()) > 0)
-                                        <br><small class="text-muted">{{ $log->connect_time->diffForHumans() }}</small>
+                                    @if($log->connected_at && $log->connected_at->diffInMinutes(now()) > 0)
+                                        <br><small class="text-muted">{{ $log->connected_at->diffForHumans() }}</small>
                                     @endif
                                 @endif
                             </td>

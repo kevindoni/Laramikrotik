@@ -73,7 +73,7 @@ class PppSecretController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'ppp_profile_id' => 'required|exists:ppp_profiles,id',
             'username' => 'required|string|max:255|unique:ppp_secrets',
-            'password' => 'required|string|min:6|max:255',
+            'password' => 'required|string|min:1|max:255',
             'service' => 'required|string|in:pppoe,pptp,l2tp,ovpn',
             'local_address' => 'nullable|string|max:255',
             'remote_address' => 'nullable|string|max:255',
@@ -152,12 +152,39 @@ class PppSecretController extends Controller
      * @param  \App\Models\PppSecret  $pppSecret
      * @return \Illuminate\Http\Response
      */
-    public function show(PppSecret $pppSecret)
+    public function show(Request $request, PppSecret $pppSecret)
     {
-        $pppSecret->load(['customer', 'pppProfile', 'invoices', 'usageLogs']);
+        $pppSecret->load(['customer', 'pppProfile', 'invoices', 'usageLogs', 'latestUsageLog']);
         
-        // Get real-time connection status
-        $realTimeStatus = $pppSecret->getRealTimeConnectionStatus();
+        // Get real-time connection status with enhanced error handling
+        $realTimeStatus = null;
+        try {
+            // Check if force refresh is requested
+            if ($request->has('force_refresh')) {
+                $realTimeStatus = $pppSecret->refreshRealTimeConnectionStatus();
+            } else {
+                $realTimeStatus = $pppSecret->getRealTimeConnectionStatus();
+            }
+            
+            // If we got a timeout, add additional context
+            if ($realTimeStatus && $realTimeStatus['status'] === 'timeout') {
+                // Check if we have recent usage logs to provide context
+                if ($pppSecret->latestUsageLog && $pppSecret->latestUsageLog->updated_at->gt(now()->subMinutes(30))) {
+                    $realTimeStatus['has_recent_data'] = true;
+                } else {
+                    $realTimeStatus['has_recent_data'] = false;
+                }
+            }
+            
+        } catch (Exception $e) {
+            logger()->warning('Exception in PppSecret show method while getting real-time status', [
+                'username' => $pppSecret->username,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Set realTimeStatus to null so view can handle gracefully
+            $realTimeStatus = null;
+        }
         
         return view('ppp-secrets.show', [
             'pppSecret' => $pppSecret,
@@ -196,7 +223,7 @@ class PppSecretController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'ppp_profile_id' => 'required|exists:ppp_profiles,id',
             'username' => 'required|string|max:255|unique:ppp_secrets,username,' . $pppSecret->id,
-            'password' => 'required|string|min:6|max:255',
+            'password' => 'required|string|min:1|max:255',
             'service' => 'required|string|in:pppoe,pptp,l2tp,ovpn',
             'local_address' => 'nullable|string|max:255',
             'remote_address' => 'nullable|string|max:255',
@@ -760,7 +787,225 @@ class PppSecretController extends Controller
      */
     public function syncFromMikrotik()
     {
-        return $this->import();
+        try {
+            // Test connection first
+            $this->mikrotikService->connect();
+            
+            // Get PPP secrets from MikroTik with timeout and retry logic
+            $mikrotikSecrets = $this->getMikrotikSecretsWithRetry();
+            
+            if (empty($mikrotikSecrets)) {
+                return redirect()->route('ppp-secrets.index')
+                    ->with('warning', '⚠️ No PPP secrets found on MikroTik router. The router may be empty or all secrets may be filtered out.');
+            }
+            
+            // Get all profiles from database for mapping
+            $profiles = PppProfile::all()->keyBy('name');
+            
+            // We'll create individual customers for each PPP secret
+            // No longer using a single default customer
+            
+            $created = 0;
+            $updated = 0;
+            $skipped = 0;
+            $errors = [];
+            
+            foreach ($mikrotikSecrets as $mikrotikSecret) {
+                try {
+                    // Skip if no username
+                    if (empty($mikrotikSecret['name'])) {
+                        $skipped++;
+                        continue;
+                    }
+                    
+                    $username = $mikrotikSecret['name'];
+                    
+                    // Check if secret already exists
+                    $existingSecret = PppSecret::where('username', $username)->first();
+                    
+                    // Find profile or create default
+                    $profileName = isset($mikrotikSecret['profile']) ? $mikrotikSecret['profile'] : 'default';
+                    $profile = isset($profiles[$profileName]) ? $profiles[$profileName] : null;
+                    
+                    if (!$profile) {
+                        // Create a basic default profile if it doesn't exist
+                        $profile = PppProfile::firstOrCreate(
+                            ['name' => $profileName],
+                            [
+                                'local_address' => '192.168.1.1',
+                                'remote_address' => '192.168.1.0/24',
+                                'rate_limit' => null,
+                                'session_timeout' => '0',
+                                'idle_timeout' => '0',
+                                'is_active' => true,
+                                'comment' => 'Auto-created during MikroTik sync'
+                            ]
+                        );
+                        $profiles[$profileName] = $profile;
+                    }
+                    
+                    // Prepare secret data
+                    $secretData = [
+                        'username' => $username,
+                        'password' => isset($mikrotikSecret['password']) ? $mikrotikSecret['password'] : 'password123',
+                        'ppp_profile_id' => $profile->id,
+                        'service' => isset($mikrotikSecret['service']) ? $mikrotikSecret['service'] : 'pppoe',
+                        'local_address' => isset($mikrotikSecret['local-address']) ? $mikrotikSecret['local-address'] : null,
+                        'remote_address' => isset($mikrotikSecret['remote-address']) ? $mikrotikSecret['remote-address'] : null,
+                        'is_active' => !isset($mikrotikSecret['disabled']) || $mikrotikSecret['disabled'] !== 'yes',
+                        'comment' => isset($mikrotikSecret['comment']) ? $mikrotikSecret['comment'] : null,
+                        'mikrotik_id' => isset($mikrotikSecret['.id']) ? $mikrotikSecret['.id'] : null,
+                        'auto_sync' => true,
+                    ];
+                    
+                    if ($existingSecret) {
+                        // Update existing secret
+                        $existingSecret->update($secretData);
+                        $updated++;
+                    } else {
+                        // Create individual customer for this PPP secret
+                        $customerName = ucfirst($username); // Capitalize the username as customer name
+                        $customerEmail = isset($mikrotikSecret['comment']) && 
+                                       filter_var($mikrotikSecret['comment'], FILTER_VALIDATE_EMAIL) 
+                                       ? $mikrotikSecret['comment'] 
+                                       : $username . '@gmail.com'; // Default email format
+                        
+                        $customer = Customer::firstOrCreate(
+                            ['name' => $customerName],
+                            [
+                                'email' => $customerEmail,
+                                'address' => 'Auto-imported from MikroTik',
+                                'phone' => '-',
+                                'is_active' => true,
+                                'registered_date' => now(),
+                            ]
+                        );
+                        
+                        // Create new secret with individual customer
+                        $secretData['customer_id'] = $customer->id;
+                        $secretData['installation_date'] = now();
+                        $secretData['due_date'] = now()->addMonth();
+                        
+                        PppSecret::create($secretData);
+                        $created++;
+                    }
+                    
+                } catch (Exception $e) {
+                    $secretName = isset($mikrotikSecret['name']) ? $mikrotikSecret['name'] : 'unknown';
+                    $errors[] = "Failed to sync secret '{$secretName}': " . $e->getMessage();
+                    logger()->error('Secret sync failed', [
+                        'secret' => $mikrotikSecret,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            // Build success message
+            $message = "📥 Sync completed successfully!\n\n";
+            $message .= "✅ Created: {$created} new secrets\n";
+            $message .= "🔄 Updated: {$updated} existing secrets\n";
+            if ($skipped > 0) {
+                $message .= "⏭️ Skipped: {$skipped} invalid secrets\n";
+            }
+            
+            if (!empty($errors)) {
+                $errorCount = count($errors);
+                $message .= "\n⚠️ {$errorCount} errors occurred:";
+                // Show first 3 errors
+                foreach (array_slice($errors, 0, 3) as $error) {
+                    $message .= "\n• " . $error;
+                }
+                if ($errorCount > 3) {
+                    $message .= "\n• ... and " . ($errorCount - 3) . " more errors";
+                }
+                
+                return redirect()->route('ppp-secrets.index')
+                    ->with('warning', $message);
+            }
+            
+            return redirect()->route('ppp-secrets.index')
+                ->with('success', $message);
+                
+        } catch (Exception $e) {
+            logger()->error('PPP secrets sync failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $errorMessage = "❌ Failed to sync PPP secrets from MikroTik:\n\n" . $e->getMessage();
+            
+            // Add helpful tips for common errors
+            if (strpos($e->getMessage(), 'timeout') !== false) {
+                $errorMessage .= "\n\n💡 Timeout Error Tips:\n";
+                $errorMessage .= "• Router may be busy - try again later\n";
+                $errorMessage .= "• Check network connection stability\n";
+                $errorMessage .= "• Verify router isn't overloaded";
+            } elseif (strpos($e->getMessage(), 'connect') !== false) {
+                $errorMessage .= "\n\n💡 Connection Error Tips:\n";
+                $errorMessage .= "• Check MikroTik settings and credentials\n";
+                $errorMessage .= "• Verify router is accessible\n";
+                $errorMessage .= "• Test connection in MikroTik Settings page";
+            }
+            
+            return redirect()->route('ppp-secrets.index')
+                ->with('error', $errorMessage);
+        }
+    }
+    
+    /**
+     * Get MikroTik secrets with retry logic and multiple fallback methods
+     */
+    private function getMikrotikSecretsWithRetry()
+    {
+        $maxAttempts = 3;
+        $lastException = null;
+        
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                logger()->info("Attempting to get MikroTik secrets", ['attempt' => $attempt]);
+                
+                // Method 1: Try batch processing (recommended)
+                if ($attempt == 1) {
+                    return $this->mikrotikService->getAllPppSecrets(10);
+                }
+                
+                // Method 2: Try smaller batch
+                if ($attempt == 2) {
+                    return $this->mikrotikService->getAllPppSecrets(5);
+                }
+                
+                // Method 3: Direct query as last resort
+                if ($attempt == 3) {
+                    $this->mikrotikService->connect();
+                    $query = new \RouterOS\Query('/ppp/secret/print');
+                    $secrets = $this->mikrotikService->getClient()->query($query)->read();
+                    
+                    // Validate response
+                    if (!is_array($secrets)) {
+                        throw new Exception('Invalid response from MikroTik: expected array, got ' . gettype($secrets));
+                    }
+                    
+                    return $secrets;
+                }
+                
+            } catch (Exception $e) {
+                $lastException = $e;
+                logger()->warning("Attempt {$attempt} failed", ['error' => $e->getMessage()]);
+                
+                // Wait before retry (except on last attempt)
+                if ($attempt < $maxAttempts) {
+                    sleep($attempt * 2); // 2s, 4s
+                    // Reconnect for next attempt
+                    try {
+                        $this->mikrotikService->connect();
+                    } catch (Exception $connectException) {
+                        logger()->warning("Reconnection failed", ['error' => $connectException->getMessage()]);
+                    }
+                }
+            }
+        }
+        
+        throw $lastException ?: new Exception('All sync attempts failed');
     }
 
     /**

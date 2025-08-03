@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
+use Illuminate\Database\Seeder;
 use App\Models\UsageLog;
 use App\Models\PppSecret;
 use Carbon\Carbon;
-use Illuminate\Database\Seeder;
 
 class UsageLogSeeder extends Seeder
 {
@@ -14,108 +14,74 @@ class UsageLogSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get existing PPP secrets
         $pppSecrets = PppSecret::all();
         
         if ($pppSecrets->isEmpty()) {
-            $this->command->info('No PPP secrets found. Please create PPP secrets first.');
+            $this->command->info('No PPP Secrets found. Please create some PPP Secrets first.');
             return;
         }
         
         $this->command->info('Creating sample usage logs...');
         
-        // Create usage logs for the past 30 days
+        // Generate usage logs for the last 30 days
         $startDate = Carbon::now()->subDays(30);
         $endDate = Carbon::now();
         
-        $logsCreated = 0;
+        $createdCount = 0;
         
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            // Random number of users active each day (30-80% of total users)
-            $activeUserCount = rand(
-                (int)($pppSecrets->count() * 0.3), 
-                (int)($pppSecrets->count() * 0.8)
-            );
+            // Generate random number of sessions per day (0-15)
+            $sessionsPerDay = rand(0, 15);
             
-            // Randomly select users for this day
-            $activeUsers = $pppSecrets->random($activeUserCount);
-            
-            foreach ($activeUsers as $user) {
-                // Some users might have multiple sessions per day
-                $sessionsPerUser = rand(1, 3);
+            for ($session = 0; $session < $sessionsPerDay; $session++) {
+                $pppSecret = $pppSecrets->random();
                 
-                for ($session = 0; $session < $sessionsPerUser; $session++) {
-                    // Random connection time during the day
-                    $connectTime = $date->copy()->addHours(rand(6, 22))->addMinutes(rand(0, 59));
-                    
-                    // Session duration between 30 minutes to 8 hours
-                    $durationMinutes = rand(30, 480);
-                    $disconnectTime = $connectTime->copy()->addMinutes($durationMinutes);
-                    
-                    // Don't create logs for future dates
-                    if ($connectTime->gt(Carbon::now())) {
-                        continue;
-                    }
-                    
-                    // Random data usage (more realistic patterns)
-                    $baseUsage = rand(10 * 1024 * 1024, 500 * 1024 * 1024); // 10MB to 500MB base
-                    $variableFactor = rand(50, 200) / 100; // 0.5x to 2x multiplier
-                    
-                    $bytesOut = (int)($baseUsage * $variableFactor); // Download
-                    $bytesIn = (int)($bytesOut * rand(5, 20) / 100); // Upload (5-20% of download)
-                    
-                    // Random IP addresses
-                    $ipAddress = '10.0.' . rand(1, 254) . '.' . rand(1, 254);
-                    
-                    // Create the usage log
-                    UsageLog::create([
-                        'ppp_secret_id' => $user->id,
-                        'caller_id' => '00:' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)),
-                        'uptime' => $durationMinutes * 60, // Convert to seconds
-                        'bytes_in' => $bytesIn,
-                        'bytes_out' => $bytesOut,
-                        'ip_address' => $ipAddress,
-                        'connected_at' => $connectTime,
-                        'disconnected_at' => $disconnectTime > Carbon::now() ? null : $disconnectTime,
-                        'session_id' => '*' . strtoupper(substr(md5(uniqid()), 0, 8)),
-                    ]);
-                    
-                    $logsCreated++;
+                // Random connection time during the day
+                $connectedAt = $date->copy()->addHours(rand(6, 22))->addMinutes(rand(0, 59));
+                
+                // Random session duration (5 minutes to 8 hours)
+                $sessionDuration = rand(300, 28800); // 5 minutes to 8 hours in seconds
+                $disconnectedAt = $connectedAt->copy()->addSeconds($sessionDuration);
+                
+                // Don't create future disconnections
+                if ($disconnectedAt->gt(Carbon::now())) {
+                    $disconnectedAt = null;
                 }
+                
+                // Generate realistic data usage (1MB to 5GB)
+                $bytesIn = rand(1048576, 5368709120); // 1MB to 5GB
+                $bytesOut = rand(104857, 536870912);  // 100KB to 500MB
+                
+                // Generate IP address
+                $ipAddress = '192.168.' . rand(1, 255) . '.' . rand(2, 254);
+                
+                // Generate caller ID (MAC address style)
+                $callerIds = [
+                    'aa:bb:cc:dd:ee:ff',
+                    'bb:cc:dd:ee:ff:aa',
+                    'cc:dd:ee:ff:aa:bb',
+                    'dd:ee:ff:aa:bb:cc',
+                    'ee:ff:aa:bb:cc:dd',
+                ];
+                
+                UsageLog::create([
+                    'ppp_secret_id' => $pppSecret->id,
+                    'caller_id' => $callerIds[array_rand($callerIds)],
+                    'uptime' => gmdate('H:i:s', $sessionDuration),
+                    'bytes_in' => $bytesIn,
+                    'bytes_out' => $bytesOut,
+                    'ip_address' => $ipAddress,
+                    'connected_at' => $connectedAt,
+                    'disconnected_at' => $disconnectedAt,
+                    'session_id' => 'sess_' . uniqid(),
+                    'created_at' => $connectedAt,
+                    'updated_at' => $disconnectedAt ?? $connectedAt,
+                ]);
+                
+                $createdCount++;
             }
         }
         
-        // Create some active sessions (no disconnect time)
-        $activeSessionCount = rand(3, 8);
-        $activeUsers = $pppSecrets->random($activeSessionCount);
-        
-        foreach ($activeUsers as $user) {
-            $connectTime = Carbon::now()->subHours(rand(1, 6));
-            $durationSoFar = Carbon::now()->diffInSeconds($connectTime);
-            
-            // Data usage so far
-            $bytesOut = rand(50 * 1024 * 1024, 200 * 1024 * 1024); // 50MB to 200MB
-            $bytesIn = (int)($bytesOut * rand(5, 15) / 100); // Upload (5-15% of download)
-            
-            $ipAddress = '10.0.' . rand(1, 254) . '.' . rand(1, 254);
-            
-            UsageLog::create([
-                'ppp_secret_id' => $user->id,
-                'caller_id' => '00:' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)) . ':' . sprintf('%02x', rand(0, 255)),
-                'uptime' => $durationSoFar,
-                'bytes_in' => $bytesIn,
-                'bytes_out' => $bytesOut,
-                'ip_address' => $ipAddress,
-                'connected_at' => $connectTime,
-                'disconnected_at' => null, // Active session
-                'session_id' => '*' . strtoupper(substr(md5(uniqid()), 0, 8)),
-            ]);
-            
-            $logsCreated++;
-        }
-        
-        $this->command->info("Created {$logsCreated} usage log entries for demonstration.");
-        $this->command->info("Usage logs span from {$startDate->format('Y-m-d')} to {$endDate->format('Y-m-d')}");
-        $this->command->info("Active sessions: {$activeSessionCount}");
+        $this->command->info("Created {$createdCount} usage log entries.");
     }
 }

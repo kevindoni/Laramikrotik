@@ -14,6 +14,9 @@
             <a href="{{ route('usage-logs.index') }}" class="btn btn-sm btn-outline-primary mr-2">
                 <i class="fas fa-arrow-left"></i> Back to Usage Logs
             </a>
+            <button onclick="syncFromMikrotik()" class="btn btn-sm btn-warning mr-2" style="font-size: 0.775rem; padding: 0.25rem 0.5rem;">
+                <i class="fas fa-download"></i> Sync from MikroTik
+            </button>
             <button onclick="location.reload()" class="btn btn-sm btn-info" style="font-size: 0.775rem; padding: 0.25rem 0.5rem;">
                 <i class="fas fa-sync-alt"></i>
             </button>
@@ -355,8 +358,6 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@latest"></script>
 <script>
 $(document).ready(function() {
-    console.log('🚀 DOM Ready, starting chart initialization...');
-    
     // Initialize DataTable for daily stats
     $('#dailyStatsTable').DataTable({
         "pageLength": 15,
@@ -366,33 +367,21 @@ $(document).ready(function() {
 
     // Check if ApexCharts is loaded
     if (typeof ApexCharts === 'undefined') {
-        console.error('❌ ApexCharts is not loaded!');
         $('#usageChart').html('<div class="alert alert-danger text-center"><i class="fas fa-exclamation-triangle"></i> ApexCharts library failed to load</div>');
         return;
     }
     
-    console.log('✅ ApexCharts loaded successfully');
-    
-    // Immediate initialization - no timeout
+    // Initialize chart
     initializeChart();
     
     function initializeChart() {
-        console.log('📊 Initializing chart...');
-        
         const chartContainer = document.getElementById('usageChart');
         if (!chartContainer) {
-            console.error('❌ Chart container not found!');
             return;
         }
         
-        console.log('✅ Chart container found:', chartContainer);
-        
         @if(!empty($chartData))
             const chartData = @json($chartData);
-            console.log('📈 Chart Data received:', chartData);
-            console.log('📊 Data check - Labels:', chartData.labels, 'Length:', chartData.labels ? chartData.labels.length : 0);
-            console.log('📊 Data check - Bytes:', chartData.bytes, 'Length:', chartData.bytes ? chartData.bytes.length : 0);
-            console.log('📊 Data check - Users:', chartData.users, 'Length:', chartData.users ? chartData.users.length : 0);
             
             // Check if we have valid data
             const hasValidData = chartData && 
@@ -401,17 +390,16 @@ $(document).ready(function() {
                                  Array.isArray(chartData.bytes) && 
                                  chartData.bytes.length > 0;
             
-            console.log('✨ Has valid data check:', hasValidData);
-            
             if (hasValidData) {
-                console.log('✅ Valid chart data confirmed, creating chart...');
-                
-                // Convert bytes to MB
+                // Convert bytes to MB and ensure positive values
                 const dataUsageMB = chartData.bytes.map(bytes => {
-                    const mb = bytes ? parseFloat((bytes / 1024 / 1024).toFixed(2)) : 0;
-                    console.log(`Converting ${bytes} bytes to ${mb} MB`);
-                    return mb;
+                    // Handle negative or null values
+                    const validBytes = Math.max(0, bytes || 0);
+                    return parseFloat((validBytes / 1024 / 1024).toFixed(2));
                 });
+                
+                // Ensure users array has same length and valid values
+                const validUsers = chartData.users.map(users => Math.max(0, users || 0));
                 
                 // Simple chart configuration
                 const options = {
@@ -442,7 +430,7 @@ $(document).ready(function() {
                         type: 'area'
                     }, {
                         name: 'Active Users',
-                        data: chartData.users,
+                        data: validUsers,
                         type: 'line'
                     }],
                     xaxis: {
@@ -552,20 +540,15 @@ $(document).ready(function() {
                     }
                 };
 
-                console.log('🎨 Chart options prepared:', options);
-
                 try {
                     // Clear container first
                     chartContainer.innerHTML = '';
                     
-                    console.log('🔧 Creating ApexChart instance...');
                     const chart = new ApexCharts(chartContainer, options);
                     
-                    console.log('⚡ Rendering chart...');
                     chart.render().then(() => {
-                        console.log('🎉 Chart rendered successfully!');
+                        // Chart rendered successfully
                     }).catch((error) => {
-                        console.error('❌ Error rendering chart:', error);
                         chartContainer.innerHTML = `<div class="alert alert-warning text-center">
                             <i class="fas fa-exclamation-triangle"></i> 
                             Chart rendering failed: ${error.message}
@@ -573,7 +556,6 @@ $(document).ready(function() {
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error creating chart:', error);
                     chartContainer.innerHTML = `<div class="alert alert-danger text-center">
                         <i class="fas fa-times-circle"></i> 
                         Chart creation failed: ${error.message}
@@ -581,14 +563,12 @@ $(document).ready(function() {
                 }
                 
             } else {
-                console.log('⚠️ No valid chart data available');
                 chartContainer.innerHTML = `<div class="text-center text-muted py-5">
                     <i class="fas fa-chart-area fa-3x mb-3"></i>
                     <p class="mb-0">No usage data available for chart display</p>
                 </div>`;
             }
         @else
-            console.log('❌ No chartData variable from backend');
             chartContainer.innerHTML = `<div class="text-center text-muted py-5">
                 <i class="fas fa-chart-area fa-3x mb-3"></i>
                 <p class="mb-0">No data loaded from server</p>
@@ -596,5 +576,82 @@ $(document).ready(function() {
         @endif
     }
 });
+
+// Function to sync usage logs from MikroTik
+function syncFromMikrotik() {
+    // Show loading state
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    
+    // Make AJAX request to sync
+    fetch('{{ route("usage-logs.sync-from-mikrotik") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showAlert('success', data.message);
+            // Reload page after short delay to show updated data
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showAlert('danger', data.message || 'Sync failed');
+        }
+    })
+    .catch(error => {
+        // More detailed error messages
+        let errorMessage = 'Network error occurred during sync';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Connection failed - please check your internet connection';
+        } else if (error.message.includes('HTTP 500')) {
+            errorMessage = 'Server error - please try again in a moment';
+        } else if (error.message.includes('HTTP 408') || error.message.includes('timeout')) {
+            errorMessage = 'Request timeout - MikroTik may be slow, please try again';
+        } else if (error.message.includes('HTTP 404')) {
+            errorMessage = 'Sync endpoint not found - please refresh the page';
+        } else if (error.message.includes('HTTP')) {
+            errorMessage = `Server returned error: ${error.message}`;
+        }
+        
+        showAlert('danger', errorMessage);
+    })
+    .finally(() => {
+        // Restore button state
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    });
+}
+
+// Function to show alert messages
+function showAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    `;
+    
+    // Insert alert after page header
+    const pageHeader = document.querySelector('.d-sm-flex');
+    if (pageHeader && pageHeader.parentNode) {
+        pageHeader.parentNode.insertAdjacentHTML('afterend', alertHtml);
+    }
+}
 </script>
 @endpush

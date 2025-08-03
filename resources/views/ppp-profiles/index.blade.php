@@ -144,7 +144,7 @@
             <form action="{{ route('ppp-profiles.sync-from-mikrotik') }}" method="POST" class="d-inline">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-info shadow-sm"
-                        onclick="return confirm('Sync profiles from MikroTik?')">
+                        onclick="return confirm('📥 Download PPP Profiles from MikroTik?\n\n• Profiles will be updated in database\n• No existing data will be lost\n• Safe merge operation')">
                     <i class="fas fa-sync fa-sm text-white-50"></i> Sync from MikroTik
                 </button>
             </form>
@@ -501,8 +501,8 @@
                                             <form action="{{ route('ppp-profiles.sync-to-mikrotik', $profile) }}" 
                                                   method="POST" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="dropdown-item" 
-                                                        onclick="return confirm('Push this profile to MikroTik?')">
+                                                <button type="submit" class="dropdown-item"
+                                                        onclick="return confirm('📤 Upload Profile to MikroTik?\n\n• This profile will be created/updated on router\n• Changes will be made directly to MikroTik')">
                                                     <i class="fas fa-upload text-success"></i> Push to MikroTik
                                                 </button>
                                             </form>

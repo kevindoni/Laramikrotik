@@ -157,6 +157,19 @@
                     <i class="fas fa-sync fa-sm text-white-50"></i> Sync from MikroTik
                 </button>
             </form>
+            <div class="btn-group ml-2" role="group">
+                <button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-cog fa-sm"></i> Debug
+                </button>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item" href="#" onclick="testConnection()">
+                        <i class="fas fa-wifi"></i> Test Connection
+                    </a>
+                    <a class="dropdown-item" href="#" onclick="testSync()">
+                        <i class="fas fa-sync"></i> Test Sync (3 secrets)
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -635,9 +648,17 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Initialize tooltips
+    // Temporary disable DataTables for debugging
+    console.log('Initializing PPP Secrets page...');
+    
+    // Just initialize basic functionality without DataTables for now
     $('[data-toggle="tooltip"]').tooltip();
-
+    
+    // Debug: Check if table structure is correct
+    console.log('Table found:', $('#secretsTable').length > 0);
+    console.log('Table headers count:', $('#secretsTable thead tr th').length);
+    console.log('Table rows count:', $('#secretsTable tbody tr').length);
+    
     // Show/hide bulk actions based on checkbox selection
     function toggleBulkActions() {
         const checkedBoxes = $('input[name="selected_secrets[]"]:checked');
@@ -673,73 +694,6 @@ $(document).ready(function() {
         toggleBulkActions();
     });
 
-    // Generic bulk action function
-    function bulkAction(actionUrl, title, verb) {
-        const selectedIds = [];
-        $('input[name="selected_secrets[]"]:checked').each(function() {
-            selectedIds.push($(this).val());
-        });
-
-        if (selectedIds.length === 0) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Selection',
-                    text: `Please select secrets to ${verb}.`,
-                    confirmButtonClass: 'btn btn-primary'
-                });
-            } else {
-                alert(`Please select secrets to ${verb}.`);
-            }
-            return;
-        }
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: title,
-                text: `You are about to ${verb} ${selectedIds.length} secret(s).`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#007bff',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: `Yes, ${verb} them!`,
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    submitBulkAction(actionUrl, selectedIds);
-                }
-            });
-        } else {
-            if (confirm(`You are about to ${verb} ${selectedIds.length} secret(s). Continue?`)) {
-                submitBulkAction(actionUrl, selectedIds);
-            }
-        }
-    }
-
-    function submitBulkAction(actionUrl, selectedIds) {
-        const form = $('<form>', {
-            method: 'POST',
-            action: actionUrl
-        });
-        
-        form.append($('<input>', {
-            type: 'hidden',
-            name: '_token',
-            value: '{{ csrf_token() }}'
-        }));
-        
-        selectedIds.forEach(id => {
-            form.append($('<input>', {
-                type: 'hidden',
-                name: 'selected_secrets[]',
-                value: id
-            }));
-        });
-        
-        $('body').append(form);
-        form.submit();
-    }
-
     // Bulk delete functionality
     $('#bulkDeleteBtn').click(function() {
         const selectedIds = [];
@@ -748,62 +702,27 @@ $(document).ready(function() {
         });
 
         if (selectedIds.length === 0) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Selection',
-                    text: 'Please select secrets to delete.',
-                    confirmButtonClass: 'btn btn-primary'
-                });
-            } else {
-                alert('Please select secrets to delete.');
-            }
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection',
+                text: 'Please select secrets to delete.',
+                confirmButtonClass: 'btn btn-primary'
+            });
             return;
         }
 
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Delete Selected Secrets?',
-                text: `You are about to delete ${selectedIds.length} secret(s). This action cannot be undone!`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete them!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const form = $('<form>', {
-                        method: 'POST',
-                        action: '{{ route("ppp-secrets.bulk-delete") }}'
-                    });
-                    
-                    form.append($('<input>', {
-                        type: 'hidden',
-                        name: '_token',
-                        value: '{{ csrf_token() }}'
-                    }));
-                    form.append($('<input>', {
-                        type: 'hidden',
-                        name: '_method',
-                        value: 'DELETE'
-                    }));
-                    
-                    selectedIds.forEach(id => {
-                        form.append($('<input>', {
-                            type: 'hidden',
-                            name: 'selected_secrets[]',
-                            value: id
-                        }));
-                    });
-                    
-                    $('body').append(form);
-                    form.submit();
-                }
-            });
-        } else {
-            if (confirm(`You are about to delete ${selectedIds.length} secret(s). This action cannot be undone! Continue?`)) {
-                // Submit form without Swal
+        Swal.fire({
+            title: 'Delete Selected Secrets?',
+            text: `You are about to delete ${selectedIds.length} secret(s). This action cannot be undone!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete them!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create form for bulk delete
                 const form = $('<form>', {
                     method: 'POST',
                     action: '{{ route("ppp-secrets.bulk-delete") }}'
@@ -831,7 +750,7 @@ $(document).ready(function() {
                 $('body').append(form);
                 form.submit();
             }
-        }
+        });
     });
 
     // Bulk enable functionality
@@ -849,53 +768,90 @@ $(document).ready(function() {
         bulkAction('{{ route("ppp-secrets.bulk-sync") }}', 'Sync Selected Secrets?', 'sync');
     });
 
-    // Copy to clipboard functionality
-    function copyToClipboard(text, element) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                // Show success feedback
-                const originalHtml = $(element).html();
-                $(element).html('<i class="fas fa-check text-success"></i>');
-                setTimeout(() => {
-                    $(element).html(originalHtml);
-                }, 1000);
-                
-                // Show toast notification if available
-                if (typeof toastr !== 'undefined') {
-                    toastr.success('Copied to clipboard!', 'Success', {
-                        timeOut: 2000,
-                        positionClass: 'toast-top-right'
-                    });
-                }
-            }).catch(function(err) {
-                console.error('Copy failed:', err);
-                if (typeof toastr !== 'undefined') {
-                    toastr.error('Failed to copy', 'Error');
-                }
+    // Generic bulk action function
+    function bulkAction(actionUrl, title, verb) {
+        const selectedIds = [];
+        $('input[name="selected_secrets[]"]:checked').each(function() {
+            selectedIds.push($(this).val());
+        });
+
+        if (selectedIds.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection',
+                text: `Please select secrets to ${verb}.`,
+                confirmButtonClass: 'btn btn-primary'
             });
-        } else {
-            // Fallback for older browsers
-            console.warn('Clipboard API not available');
+            return;
         }
+
+        Swal.fire({
+            title: title,
+            text: `You are about to ${verb} ${selectedIds.length} secret(s).`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#007bff',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Yes, ${verb} them!`,
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create form for bulk action
+                const form = $('<form>', {
+                    method: 'POST',
+                    action: actionUrl
+                });
+                
+                form.append($('<input>', {
+                    type: 'hidden',
+                    name: '_token',
+                    value: '{{ csrf_token() }}'
+                }));
+                
+                selectedIds.forEach(id => {
+                    form.append($('<input>', {
+                        type: 'hidden',
+                        name: 'selected_secrets[]',
+                        value: id
+                    }));
+                });
+                
+                $('body').append(form);
+                form.submit();
+            }
+        });
     }
 
-    // Make copyToClipboard globally accessible
-    window.copyToClipboard = function(text) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                if (typeof toastr !== 'undefined') {
-                    toastr.success('Copied to clipboard!', 'Success', {
-                        timeOut: 2000,
-                        positionClass: 'toast-top-right'
-                    });
-                }
-            }).catch(function(err) {
-                console.error('Copy failed:', err);
-                if (typeof toastr !== 'undefined') {
-                    toastr.error('Failed to copy', 'Error');
-                }
+    // Copy to clipboard functionality
+    function copyToClipboard(text, element) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Show success feedback
+            const originalHtml = $(element).html();
+            $(element).html('<i class="fas fa-check text-success"></i>');
+            setTimeout(() => {
+                $(element).html(originalHtml);
+            }, 1000);
+            
+            // Show toast notification
+            toastr.success('Copied to clipboard!', 'Success', {
+                timeOut: 2000,
+                positionClass: 'toast-top-right'
             });
-        }
+        }).catch(function(err) {
+            toastr.error('Failed to copy', 'Error');
+        });
+    }
+
+    // Make copyToClipboard globally accessible for SweetAlert buttons
+    window.copyToClipboard = function(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            toastr.success('Copied to clipboard!', 'Success', {
+                timeOut: 2000,
+                positionClass: 'toast-top-right'
+            });
+        }).catch(function(err) {
+            toastr.error('Failed to copy', 'Error');
+        });
     };
 
     // Handle copy button clicks
@@ -905,137 +861,117 @@ $(document).ready(function() {
         copyToClipboard(text, this);
     });
 
-    // Delete confirmation
+    // Delete confirmation with SweetAlert2
     $('.delete-form').on('submit', function(e) {
         e.preventDefault();
         const form = this;
         
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Delete Secret?',
-                text: "This action cannot be undone!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        } else {
-            if (confirm('Delete this secret? This action cannot be undone!')) {
+        Swal.fire({
+            title: 'Delete Secret?',
+            text: "This action cannot be undone!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
                 form.submit();
             }
-        }
+        });
     });
 
-    // Generate username
+    // Generate username with enhanced UI
     $('#generate-username').click(function(e) {
         e.preventDefault();
         const $btn = $(this);
         const originalText = $btn.html();
         
+        // Show loading state
         $btn.html('<i class="fas fa-spinner fa-spin"></i> Generating...').prop('disabled', true);
         
         $.get('{{ route("ppp-secrets.generate-username") }}')
             .done(function(data) {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Username Generated!',
-                        html: `
-                            <div class="mb-3">
-                                <strong>New Username:</strong>
-                                <div class="input-group mt-2">
-                                    <input type="text" class="form-control text-center font-weight-bold" 
-                                           value="${data.username}" readonly>
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary" type="button" 
-                                                onclick="copyToClipboard('${data.username}')" 
-                                                title="Copy to clipboard">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
+                Swal.fire({
+                    title: 'Username Generated!',
+                    html: `
+                        <div class="mb-3">
+                            <strong>New Username:</strong>
+                            <div class="input-group mt-2">
+                                <input type="text" class="form-control text-center font-weight-bold" 
+                                       value="${data.username}" id="generated-username" readonly>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="copyToClipboard('${data.username}')" 
+                                            title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
                                 </div>
                             </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: '<i class="fas fa-check"></i> Got it!',
-                        confirmButtonClass: 'btn btn-primary'
-                    });
-                } else {
-                    alert(`Username Generated: ${data.username}`);
-                }
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: '<i class="fas fa-check"></i> Got it!',
+                    confirmButtonClass: 'btn btn-primary'
+                });
             })
             .fail(function() {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to generate username. Please try again.',
-                        icon: 'error'
-                    });
-                } else {
-                    alert('Failed to generate username. Please try again.');
-                }
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to generate username. Please try again.',
+                    icon: 'error'
+                });
             })
             .always(function() {
                 $btn.html(originalText).prop('disabled', false);
             });
     });
     
-    // Generate password
+    // Generate password with enhanced UI
     $('#generate-password').click(function(e) {
         e.preventDefault();
         const $btn = $(this);
         const originalText = $btn.html();
         
+        // Show loading state
         $btn.html('<i class="fas fa-spinner fa-spin"></i> Generating...').prop('disabled', true);
         
         $.get('{{ route("ppp-secrets.generate-password") }}')
             .done(function(data) {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Password Generated!',
-                        html: `
-                            <div class="mb-3">
-                                <strong>New Password:</strong>
-                                <div class="input-group mt-2">
-                                    <input type="text" class="form-control text-center font-weight-bold" 
-                                           value="${data.password}" readonly>
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary" type="button" 
-                                                onclick="copyToClipboard('${data.password}')" 
-                                                title="Copy to clipboard">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
+                Swal.fire({
+                    title: 'Password Generated!',
+                    html: `
+                        <div class="mb-3">
+                            <strong>New Password:</strong>
+                            <div class="input-group mt-2">
+                                <input type="text" class="form-control text-center font-weight-bold" 
+                                       value="${data.password}" id="generated-password" readonly>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="copyToClipboard('${data.password}')" 
+                                            title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
                                 </div>
-                                <small class="text-muted mt-2 d-block">
-                                    <i class="fas fa-info-circle"></i> 
-                                    Strong password with letters, numbers, and symbols
-                                </small>
                             </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: '<i class="fas fa-check"></i> Got it!',
-                        confirmButtonClass: 'btn btn-primary'
-                    });
-                } else {
-                    alert(`Password Generated: ${data.password}`);
-                }
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle"></i> 
+                                Strong password with letters, numbers, and symbols
+                            </small>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: '<i class="fas fa-check"></i> Got it!',
+                    confirmButtonClass: 'btn btn-primary'
+                });
             })
             .fail(function() {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to generate password. Please try again.',
-                        icon: 'error'
-                    });
-                } else {
-                    alert('Failed to generate password. Please try again.');
-                }
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to generate password. Please try again.',
+                    icon: 'error'
+                });
             })
             .always(function() {
                 $btn.html(originalText).prop('disabled', false);
@@ -1047,10 +983,134 @@ $(document).ready(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
 
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
+
     // Refresh page functionality
     $('#refreshBtn').click(function() {
         location.reload();
     });
 });
+
+// Debug functions - defined globally
+function testConnection() {
+    // Check if SweetAlert is available
+    if (typeof Swal === 'undefined') {
+        alert('SweetAlert library not loaded. Testing connection...');
+        console.log('Fallback: SweetAlert not available');
+    }
+    
+    $.get('{{ route("ppp-secrets.test-connection") }}')
+        .done(function(data) {
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: '✅ Connection Test Success!',
+                        html: `<div class="text-left">
+                            <strong>Host:</strong> ${data.host}<br>
+                            <strong>Status:</strong> Connected successfully
+                        </div>`,
+                        icon: 'success'
+                    });
+                } else {
+                    alert(`✅ Connection Test Success!\nHost: ${data.host}\nStatus: Connected successfully`);
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: '❌ Connection Test Failed',
+                        text: data.error,
+                        icon: 'error'
+                    });
+                } else {
+                    alert(`❌ Connection Test Failed\n${data.error}`);
+                }
+            }
+        })
+        .fail(function(xhr) {
+            const errorMsg = xhr.responseJSON?.message || 'Failed to test connection.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error',
+                    text: errorMsg,
+                    icon: 'error'
+                });
+            } else {
+                alert(`Error: ${errorMsg}`);
+            }
+        });
+}
+
+function testSync() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Testing Sync...',
+            text: 'Retrieving sample secrets from MikroTik',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    } else {
+        console.log('Testing sync - SweetAlert fallback');
+    }
+    
+    $.get('{{ route("ppp-secrets.test-sync") }}')
+        .done(function(data) {
+            if (data.success) {
+                let message = `Secrets found: ${data.count}\n\n`;
+                
+                if (data.sample && data.sample.length > 0) {
+                    message += 'Sample secrets:\n';
+                    data.sample.forEach((secret, index) => {
+                        message += `${index + 1}. ${secret.name || 'unnamed'}\n`;
+                    });
+                }
+                
+                if (typeof Swal !== 'undefined') {
+                    let sampleHtml = '<div class="text-left">';
+                    sampleHtml += `<strong>Secrets found:</strong> ${data.count}<br><br>`;
+                    
+                    if (data.sample && data.sample.length > 0) {
+                        sampleHtml += '<strong>Sample secrets:</strong><br>';
+                        data.sample.forEach((secret, index) => {
+                            sampleHtml += `${index + 1}. ${secret.name || 'unnamed'}<br>`;
+                        });
+                    }
+                    sampleHtml += '</div>';
+                    
+                    Swal.fire({
+                        title: '✅ Sync Test Success!',
+                        html: sampleHtml,
+                        icon: 'success'
+                    });
+                } else {
+                    alert(`✅ Sync Test Success!\n${message}`);
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: '❌ Sync Test Failed',
+                        text: data.error,
+                        icon: 'error'
+                    });
+                } else {
+                    alert(`❌ Sync Test Failed\n${data.error}`);
+                }
+            }
+        })
+        .fail(function(xhr) {
+            const errorMsg = xhr.responseJSON?.message || 'Failed to test sync.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error',
+                    text: errorMsg,
+                    icon: 'error'
+                });
+            } else {
+                alert(`Error: ${errorMsg}`);
+            }
+        });
+}
 </script>
 @endpush

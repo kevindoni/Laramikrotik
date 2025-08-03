@@ -12,22 +12,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create admin user only - no dummy data
+        // Create only essential admin user - no dummy data
         User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
+            ['email' => 'admin@laramikrotik.com'],
             [
                 'name' => 'Administrator',
-                'last_name' => 'System',
-                'password' => 'admin123',
+                'last_name' => 'Admin',
+                'password' => 'password',
                 'role' => 'admin',
+                'email_verified_at' => now(),
             ]
         );
 
         $this->command->info('✅ Admin user created successfully!');
-        $this->command->info('📧 Email: admin@admin.com');
-        $this->command->info('🔑 Password: admin123');
+        $this->command->info('📧 Email: admin@laramikrotik.com');
+        $this->command->info('🔑 Password: password');
         $this->command->info('');
-        $this->command->info('ℹ️  All other data (customers, profiles, secrets) will be synced from MikroTik router.');
-        $this->command->info('🔧 Please configure your MikroTik connection settings first.');
+        $this->command->info('ℹ️  No dummy data will be created.');
+        $this->command->info('📡 All operational data should be synced from your MikroTik router.');
+        $this->command->info('🔧 Please configure your MikroTik connection settings in the admin panel.');
+        $this->command->info('');
+        $this->command->info('🚀 Your Laravel MikroTik application is ready to use!');
     }
 }
