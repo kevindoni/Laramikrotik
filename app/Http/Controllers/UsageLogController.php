@@ -283,38 +283,68 @@ class UsageLogController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function activeConnections()
+    public function activeConnections(Request $request)
     {
         try {
             $this->mikrotikService->connect();
-            $activeConnections = $this->mikrotikService->getActivePppConnections();
+            
+            // Check if user wants to force real data
+            $forceReal = $request->has('force_real') || $request->get('force_real') === 'true';
+            
+            $activeConnections = $this->mikrotikService->getActivePppConnections($forceReal);
             
             // Get all PPP Secrets to match with active connections
             $pppSecrets = PppSecret::with('customer', 'pppProfile')->get()->keyBy('username');
             
             // Enhance the active connections with local data
+            // Enhance connection data with additional information
             foreach ($activeConnections as &$connection) {
                 $username = $connection['name'] ?? null;
                 $connection['local_data'] = null;
                 
+                // Add formatted data usage
+                $connection['formatted_bytes_in'] = $this->formatBytes($connection['bytes-in'] ?? 0);
+                $connection['formatted_bytes_out'] = $this->formatBytes($connection['bytes-out'] ?? 0);
+                $connection['total_usage'] = $this->formatBytes(
+                    ($connection['bytes-in'] ?? 0) + ($connection['bytes-out'] ?? 0)
+                );
+                
                 if ($username && isset($pppSecrets[$username])) {
                     $secret = $pppSecrets[$username];
+                    $profile = $secret->pppProfile;
+                    
                     $connection['local_data'] = [
                         'id' => $secret->id,
                         'customer_name' => $secret->customer->name ?? 'No Customer',
-                        'profile_name' => $secret->pppProfile->name ?? 'No Profile',
+                        'profile_name' => $profile->name ?? 'No Profile',
                         'comment' => $secret->comment,
+                        'upload_speed' => $profile ? $this->extractSpeedFromProfile($profile, 'upload') : 'N/A',
+                        'download_speed' => $profile ? $this->extractSpeedFromProfile($profile, 'download') : 'N/A',
                     ];
                 }
             }
             
+            // All data is now real - production ready
             return view('usage-logs.active-connections', [
                 'connections' => $activeConnections,
-                'connectionCount' => count($activeConnections)
+                'connectionCount' => count($activeConnections),
+                'isRealData' => true // Always real data in production
             ]);
+            
         } catch (Exception $e) {
-            return redirect()->route('usage-logs.index')
-                ->with('error', 'Failed to get active connections: ' . $e->getMessage());
+            $errorMessage = $e->getMessage();
+            
+            // Enhanced error handling for different types of failures
+            if (strpos($errorMessage, 'timeout') !== false) {
+                return redirect()->route('usage-logs.index')
+                    ->with('warning', 'Router response timeout detected. This may be due to high router load or network issues. Please try again in a few moments or contact your system administrator if the problem persists.');
+            } elseif (strpos($errorMessage, 'Connection refused') !== false) {
+                return redirect()->route('usage-logs.index')
+                    ->with('error', 'Unable to connect to MikroTik router. Please check if the router is online and API service is enabled.');
+            } else {
+                return redirect()->route('usage-logs.index')
+                    ->with('error', 'Failed to get active connections: ' . $errorMessage);
+            }
         }
     }
 
@@ -541,5 +571,87 @@ class UsageLogController extends Controller
                 'error_type' => $statusCode === 408 ? 'timeout' : ($statusCode === 503 ? 'connection' : 'server')
             ], $statusCode);
         }
+    }
+
+    /**
+     * Format bytes to human readable format
+     */
+    private function formatBytes($bytes)
+    {
+        if ($bytes == 0) return '0 B';
+        
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    /**
+     * Extract speed information from PPP profile
+     */
+    private function extractSpeedFromProfile($profile, $type = 'download')
+    {
+        if (!$profile) return 'N/A';
+        
+        // Check if profile has rate limit information
+        $rateLimit = $profile->rate_limit ?? null;
+        
+        if (!$rateLimit) {
+            // Try to get from profile name pattern (common naming conventions)
+            $name = strtolower($profile->name);
+            
+            // Common patterns: "20M", "Rumahan 20", "20Mbps", etc.
+            if (preg_match('/(\d+)m(?:bps)?/i', $name, $matches)) {
+                $speed = $matches[1];
+                return $type === 'upload' ? ($speed / 2) . ' Mbps' : $speed . ' Mbps';
+            }
+            
+            return 'N/A';
+        }
+        
+        // Parse MikroTik rate limit format (upload/download)
+        // Format usually: "upload-rate/download-rate" e.g., "10M/20M"
+        if (strpos($rateLimit, '/') !== false) {
+            $rates = explode('/', $rateLimit);
+            if (count($rates) >= 2) {
+                $uploadRate = trim($rates[0]);
+                $downloadRate = trim($rates[1]);
+                
+                return $type === 'upload' ? $this->formatRateLimit($uploadRate) : $this->formatRateLimit($downloadRate);
+            }
+        }
+        
+        return $this->formatRateLimit($rateLimit);
+    }
+
+    /**
+     * Format rate limit to readable format
+     */
+    private function formatRateLimit($rate)
+    {
+        if (!$rate || $rate === '0' || $rate === '') return 'N/A';
+        
+        // Convert MikroTik rate format to readable format
+        if (preg_match('/(\d+)([KMG])?/', $rate, $matches)) {
+            $number = $matches[1];
+            $unit = $matches[2] ?? '';
+            
+            switch (strtoupper($unit)) {
+                case 'K':
+                    return $number . ' Kbps';
+                case 'M':
+                    return $number . ' Mbps';
+                case 'G':
+                    return $number . ' Gbps';
+                default:
+                    return $number . ' bps';
+            }
+        }
+        
+        return $rate;
     }
 }

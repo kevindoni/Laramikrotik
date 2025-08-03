@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\CompanySettingsController;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,5 +23,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrap();
+        
+        // Share company settings with all views
+        View::composer('layouts.admin', function ($view) {
+            $companySettings = CompanySettingsController::getSettings();
+            $view->with('companySettings', $companySettings);
+        });
     }
 }

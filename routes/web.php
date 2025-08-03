@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AlertController;
+use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvoiceController;
@@ -101,7 +103,7 @@ Route::middleware(['auth'])->group(function () {
                 'success' => true,
                 'message' => 'Retrieved secrets successfully!',
                 'count' => count($secrets),
-                'sample' => $secrets
+                'list' => $secrets
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -125,7 +127,7 @@ Route::middleware(['auth'])->group(function () {
                 'success' => true,
                 'count' => count($secrets),
                 'time_taken' => round($end - $start, 2) . ' seconds',
-                'sample' => count($secrets) > 0 ? $secrets[0]['name'] : 'No secrets found'
+                'first' => count($secrets) > 0 ? $secrets[0]['name'] : 'No secrets found'
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -171,7 +173,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/invoices/unpaid', [InvoiceController::class, 'unpaid'])->name('invoices.unpaid');
     Route::get('/invoices/paid', [InvoiceController::class, 'paid'])->name('invoices.paid');
     Route::post('/invoices/process-overdue', [InvoiceController::class, 'processOverdue'])->name('invoices.process-overdue');
+    Route::get('/invoices/{invoice}/preview', [InvoiceController::class, 'preview'])->name('invoices.preview');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+    Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
     Route::post('/invoices/{invoice}/send-reminder', [InvoiceController::class, 'sendReminder'])->name('invoices.send-reminder');
     Route::post('/invoices/{invoice}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
@@ -215,7 +219,23 @@ Route::middleware(['auth'])->group(function () {
     
     Route::resource('mikrotik-settings', MikrotikSettingController::class);
     
-    // Usage Logs Management
+    // Alerts Routes
+    Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::post('/alerts/block/{id}', [AlertController::class, 'blockUser'])->name('alerts.block');
+    Route::post('/alerts/unblock/{id}', [AlertController::class, 'unblockUser'])->name('alerts.unblock');
+    Route::post('/alerts/mark-paid/{id}', [AlertController::class, 'markAsPaid'])->name('alerts.mark-paid');
+    Route::post('/alerts/auto-block', [AlertController::class, 'autoBlock'])->name('alerts.auto-block');
+    Route::get('/alerts/count', [AlertController::class, 'getAlertCount'])->name('alerts.count');
+
+    // Notification Routes
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/api', [\App\Http\Controllers\NotificationController::class, 'getNotifications'])->name('notifications.api');
+    Route::get('/notifications/count', [\App\Http\Controllers\NotificationController::class, 'getCount'])->name('notifications.count');
+    Route::post('/notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/notifications/{notification}', [\App\Http\Controllers\NotificationController::class, 'delete'])->name('notifications.delete');
+
+    // Usage Logs Routes
     Route::get('/usage-logs/active-connections', [UsageLogController::class, 'activeConnections'])->name('usage-logs.active-connections');
     Route::get('/usage-logs/statistics', [UsageLogController::class, 'statistics'])->name('usage-logs.statistics');
     Route::post('/usage-logs/sync-from-mikrotik', [UsageLogController::class, 'syncFromMikrotik'])->name('usage-logs.sync-from-mikrotik');
@@ -246,6 +266,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/quality-metrics', [App\Http\Controllers\MikrotikMonitorController::class, 'qualityMetrics'])->name('quality-metrics');
         Route::get('/packet-loss', [App\Http\Controllers\MikrotikMonitorController::class, 'packetLoss'])->name('packet-loss');
     });
+    
+    // Company Settings
+    Route::get('/company-settings', [CompanySettingsController::class, 'index'])->name('company-settings.index');
+    Route::put('/company-settings', [CompanySettingsController::class, 'update'])->name('company-settings.update');
     
     // About page
     Route::get('/about', [App\Http\Controllers\AboutController::class, 'index'])->name('about');

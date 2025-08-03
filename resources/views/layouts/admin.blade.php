@@ -9,7 +9,6 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Fonts -->
@@ -128,6 +127,15 @@
             <a class="nav-link" href="{{ route('payments.index') }}">
                 <i class="fas fa-fw fa-money-bill-wave"></i>
                 <span>Pembayaran</span>
+            </a>
+        </li>
+
+        <!-- Nav Item - Alerts -->
+        <li class="nav-item {{ Nav::isRoute('alerts.index') }}">
+            <a class="nav-link" href="{{ route('alerts.index') }}">
+                <i class="fas fa-fw fa-exclamation-triangle"></i>
+                <span>Alerts</span>
+                <span class="badge badge-danger ml-2" id="alert-count-badge" style="display: none;">0</span>
             </a>
         </li>
 
@@ -341,47 +349,17 @@
                         <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-bell fa-fw"></i>
                             <!-- Counter - Alerts -->
-                            <span class="badge badge-danger badge-counter">3+</span>
+                            <span class="badge badge-danger badge-counter" id="topbar-alert-count" style="display: none;">0</span>
                         </a>
                         <!-- Dropdown - Alerts -->
                         <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
                             <h6 class="dropdown-header">
-                                Alerts Center
+                                Payment Alerts
                             </h6>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="mr-3">
-                                    <div class="icon-circle bg-primary">
-                                        <i class="fas fa-file-alt text-white"></i>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="small text-gray-500">December 12, 2019</div>
-                                    <span class="font-weight-bold">A new monthly report is ready to download!</span>
-                                </div>
-                            </a>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="mr-3">
-                                    <div class="icon-circle bg-success">
-                                        <i class="fas fa-donate text-white"></i>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="small text-gray-500">December 7, 2019</div>
-                                    $290.29 has been deposited into your account!
-                                </div>
-                            </a>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="mr-3">
-                                    <div class="icon-circle bg-warning">
-                                        <i class="fas fa-exclamation-triangle text-white"></i>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="small text-gray-500">December 2, 2019</div>
-                                    Spending Alert: We've noticed unusually high spending for your account.
-                                </div>
-                            </a>
-                            <a class="dropdown-item text-center small text-gray-500" href="#">Show All Alerts</a>
+                            <div id="alert-dropdown-content">
+                                <a class="dropdown-item text-center small text-gray-500" href="#">Loading alerts...</a>
+                            </div>
+                            <a class="dropdown-item text-center small text-gray-500" href="{{ route('alerts.index') }}">Show All Alerts</a>
                         </div>
                     </li>
 
@@ -390,54 +368,24 @@
                         <a class="nav-link dropdown-toggle" href="#" id="messagesDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-envelope fa-fw"></i>
                             <!-- Counter - Messages -->
-                            <span class="badge badge-danger badge-counter">7</span>
+                            <span class="badge badge-danger badge-counter" id="messageCounter" style="display: none;">0</span>
                         </a>
                         <!-- Dropdown - Messages -->
                         <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="messagesDropdown">
                             <h6 class="dropdown-header">
                                 Message Center
+                                <button type="button" class="btn btn-link btn-sm float-right" id="markAllReadBtn" style="font-size: 12px; padding: 0;">
+                                    <i class="fas fa-check-double"></i> Mark All Read
+                                </button>
                             </h6>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="dropdown-list-image mr-3">
-                                    <img class="rounded-circle" src="https://source.unsplash.com/fn_BT9fwg_E/60x60" alt="">
-                                    <div class="status-indicator bg-success"></div>
+                            <div id="notificationsList">
+                                <div class="dropdown-item text-center py-3">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
                                 </div>
-                                <div class="font-weight-bold">
-                                    <div class="text-truncate">Hi there! I am wondering if you can help me with a problem I've been having.</div>
-                                    <div class="small text-gray-500">Emily Fowler · 58m</div>
-                                </div>
+                            </div>
+                            <a class="dropdown-item text-center small text-gray-500" href="{{ route('notifications.index') }}">
+                                <i class="fas fa-list"></i> View All Messages
                             </a>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="dropdown-list-image mr-3">
-                                    <img class="rounded-circle" src="https://source.unsplash.com/AU4VPcFN4LE/60x60" alt="">
-                                    <div class="status-indicator"></div>
-                                </div>
-                                <div>
-                                    <div class="text-truncate">I have the photos that you ordered last month, how would you like them sent to you?</div>
-                                    <div class="small text-gray-500">Jae Chun · 1d</div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="dropdown-list-image mr-3">
-                                    <img class="rounded-circle" src="https://source.unsplash.com/CS2uCrpNzJY/60x60" alt="">
-                                    <div class="status-indicator bg-warning"></div>
-                                </div>
-                                <div>
-                                    <div class="text-truncate">Last month's report looks great, I am very happy with the progress so far, keep up the good work!</div>
-                                    <div class="small text-gray-500">Morgan Alvarez · 2d</div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item d-flex align-items-center" href="#">
-                                <div class="dropdown-list-image mr-3">
-                                    <img class="rounded-circle" src="https://source.unsplash.com/Mv9hjnEUHR4/60x60" alt="">
-                                    <div class="status-indicator bg-success"></div>
-                                </div>
-                                <div>
-                                    <div class="text-truncate">Am I a good boy? The reason I ask is because someone told me that people say this to all dogs, even if they aren't good...</div>
-                                    <div class="small text-gray-500">Chicken the Dog · 2w</div>
-                                </div>
-                            </a>
-                            <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
                         </div>
                     </li>
 
@@ -455,13 +403,9 @@
                                 <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                 {{ __('Profile') }}
                             </a>
-                            <a class="dropdown-item" href="javascript:void(0)">
+                            <a class="dropdown-item" href="{{ route('company-settings.index') }}">
                                 <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
                                 {{ __('Settings') }}
-                            </a>
-                            <a class="dropdown-item" href="javascript:void(0)">
-                                <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                                {{ __('Activity Log') }}
                             </a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
@@ -491,7 +435,18 @@
         <footer class="sticky-footer bg-white">
             <div class="container my-auto">
                 <div class="copyright text-center my-auto">
-                    <span>Maintained by <a href="https://github.com/aleckrh" target="_blank">AleckRH</a>. {{ now()->year }}</span>
+                    <span>Developer 
+                        @if(isset($companySettings['developer_by']) && $companySettings['developer_by'])
+                            @if(isset($companySettings['github_url']) && $companySettings['github_url'])
+                                <a href="{{ $companySettings['github_url'] }}" target="_blank">{{ $companySettings['developer_by'] }}</a>
+                            @else
+                                {{ $companySettings['developer_by'] }}
+                            @endif
+                        @else
+                            <a href="https://github.com/kevindoni" target="_blank">Kevin Doni</a>
+                        @endif
+                        . {{ now()->year }}
+                    </span>
                 </div>
             </div>
         </footer>
@@ -579,6 +534,250 @@ $.ajaxSetup({
     headers: {
         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
     }
+});
+
+// Load alert counts on page load
+$(document).ready(function() {
+    loadAlertCounts();
+    
+    // Update alert counts every 5 minutes
+    setInterval(loadAlertCounts, 300000);
+});
+
+function loadAlertCounts() {
+    $.ajax({
+        url: '{{ route("alerts.count") }}',
+        method: 'GET',
+        success: function(response) {
+            const totalAlerts = response.total || 0;
+            
+            // Update sidebar badge
+            const sidebarBadge = $('#alert-count-badge');
+            if (totalAlerts > 0) {
+                sidebarBadge.text(totalAlerts).show();
+            } else {
+                sidebarBadge.hide();
+            }
+            
+            // Update topbar badge
+            const topbarBadge = $('#topbar-alert-count');
+            if (totalAlerts > 0) {
+                topbarBadge.text(totalAlerts > 99 ? '99+' : totalAlerts).show();
+            } else {
+                topbarBadge.hide();
+            }
+            
+            // Update dropdown content
+            updateAlertDropdown(response);
+        },
+        error: function() {
+            console.log('Failed to load alert counts');
+        }
+    });
+}
+
+function updateAlertDropdown(alertData) {
+    const dropdownContent = $('#alert-dropdown-content');
+    let content = '';
+    
+    if (alertData.total === 0) {
+        content = '<a class="dropdown-item text-center small text-gray-500" href="#">No alerts at this time</a>';
+    } else {
+        if (alertData.overdue > 0) {
+            content += `
+                <a class="dropdown-item d-flex align-items-center" href="{{ route('alerts.index') }}">
+                    <div class="mr-3">
+                        <div class="icon-circle bg-danger">
+                            <i class="fas fa-exclamation-triangle text-white"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="small text-gray-500">Overdue Payments</div>
+                        <span class="font-weight-bold">${alertData.overdue} users with overdue payments</span>
+                    </div>
+                </a>
+            `;
+        }
+        
+        if (alertData.upcoming > 0) {
+            content += `
+                <a class="dropdown-item d-flex align-items-center" href="{{ route('alerts.index') }}">
+                    <div class="mr-3">
+                        <div class="icon-circle bg-warning">
+                            <i class="fas fa-clock text-white"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="small text-gray-500">Payment Due Soon</div>
+                        <span class="font-weight-bold">${alertData.upcoming} users due within 24 hours</span>
+                    </div>
+                </a>
+            `;
+        }
+        
+        if (alertData.to_block > 0) {
+            content += `
+                <a class="dropdown-item d-flex align-items-center" href="{{ route('alerts.index') }}">
+                    <div class="mr-3">
+                        <div class="icon-circle bg-danger">
+                            <i class="fas fa-ban text-white"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="small text-gray-500">Users to Block</div>
+                        <span class="font-weight-bold">${alertData.to_block} users need to be blocked</span>
+                    </div>
+                </a>
+            `;
+        }
+    }
+    
+    dropdownContent.html(content);
+}
+
+// Notification Management
+function loadNotifications() {
+    fetch('{{ route("notifications.api") }}')
+        .then(response => response.json())
+        .then(data => {
+            updateNotificationDropdown(data.notifications);
+            updateNotificationCounter(data.unread_count);
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+        });
+}
+
+function updateNotificationDropdown(notifications) {
+    const notificationsList = document.getElementById('notificationsList');
+    
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = `
+            <div class="dropdown-item text-center py-3 text-muted">
+                <i class="fas fa-inbox"></i><br>No new notifications
+            </div>
+        `;
+        return;
+    }
+    
+    let content = '';
+    notifications.forEach(notification => {
+        const iconColorClass = getIconColorClass(notification.color);
+        const readClass = notification.is_read ? 'text-muted' : '';
+        
+        content += `
+            <a class="dropdown-item d-flex align-items-center notification-item ${readClass}" 
+               href="#" 
+               data-notification-id="${notification.id}"
+               onclick="markNotificationAsRead(${notification.id}, event)">
+                <div class="mr-3">
+                    <div class="icon-circle bg-${notification.color}">
+                        <i class="${notification.icon} text-white"></i>
+                    </div>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="font-weight-bold text-truncate" style="max-width: 280px;">
+                        ${notification.title}
+                    </div>
+                    <div class="small text-truncate text-gray-500" style="max-width: 280px;">
+                        ${notification.message}
+                    </div>
+                    <div class="small text-gray-400">
+                        <i class="fas fa-clock"></i> ${notification.time_ago}
+                    </div>
+                </div>
+                ${!notification.is_read ? '<div class="ml-2"><span class="badge badge-primary badge-sm">New</span></div>' : ''}
+            </a>
+        `;
+    });
+    
+    notificationsList.innerHTML = content;
+}
+
+function updateNotificationCounter(count) {
+    const counter = document.getElementById('messageCounter');
+    if (count > 0) {
+        counter.textContent = count > 99 ? '99+' : count;
+        counter.style.display = 'inline';
+    } else {
+        counter.style.display = 'none';
+    }
+}
+
+function getIconColorClass(color) {
+    const colorMap = {
+        'success': 'text-success',
+        'info': 'text-info',
+        'warning': 'text-warning',
+        'danger': 'text-danger',
+        'primary': 'text-primary'
+    };
+    return colorMap[color] || 'text-info';
+}
+
+function markNotificationAsRead(notificationId, event) {
+    event.preventDefault();
+    
+    fetch(`/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI to show as read
+            const notificationItem = document.querySelector(`[data-notification-id="${notificationId}"]`);
+            if (notificationItem) {
+                notificationItem.classList.add('text-muted');
+                const newBadge = notificationItem.querySelector('.badge-primary');
+                if (newBadge) {
+                    newBadge.remove();
+                }
+            }
+            
+            // Refresh notification count
+            loadNotifications();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+// Mark all notifications as read
+document.getElementById('markAllReadBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    fetch('{{ route("notifications.read-all") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadNotifications();
+            // Show success message
+            toastr.success('All notifications marked as read', 'Success');
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+        toastr.error('Failed to mark notifications as read', 'Error');
+    });
+});
+
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    
+    // Refresh notifications every 30 seconds
+    setInterval(loadNotifications, 30000);
 });
 </script>
 

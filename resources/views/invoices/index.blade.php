@@ -251,8 +251,18 @@
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('invoices.show', $invoice) }}" 
-                                       class="btn btn-sm btn-info" title="View">
+                                       class="btn btn-sm btn-info" title="View Details">
                                         <i class="fas fa-eye"></i>
+                                    </a>
+                                    
+                                    <a href="{{ route('invoices.preview', $invoice) }}" 
+                                       class="btn btn-sm btn-secondary" title="Preview Invoice" target="_blank">
+                                        <i class="fas fa-search"></i>
+                                    </a>
+                                    
+                                    <a href="{{ route('invoices.download', $invoice) }}" 
+                                       class="btn btn-sm btn-success" title="Download PDF" target="_blank">
+                                        <i class="fas fa-download"></i>
                                     </a>
                                     
                                     @if($invoice->status !== 'paid')
@@ -261,11 +271,6 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     @endif
-                                    
-                                    <a href="{{ route('invoices.pdf', $invoice) }}" 
-                                       class="btn btn-sm btn-success" title="Download PDF" target="_blank">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
                                     
                                     @if($invoice->status === 'pending')
                                         <a href="{{ route('payments.create', ['invoice' => $invoice->id]) }}" 

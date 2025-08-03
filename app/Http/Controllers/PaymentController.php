@@ -150,16 +150,26 @@ class PaymentController extends Controller
             $invoice = Invoice::find($data['invoice_id']);
             $invoice->updateStatus();
             
-            // If invoice is now paid and has a PPP secret that's disabled, enable it
-            if ($invoice->status === 'paid' && $invoice->pppSecret && !$invoice->pppSecret->is_active) {
+            // If invoice is now paid and has a PPP secret, restore original profile or enable it
+            if ($invoice->status === 'paid' && $invoice->pppSecret) {
                 try {
                     $this->mikrotikService->connect();
-                    $this->mikrotikService->enablePppSecret($invoice->pppSecret);
-                    return redirect()->route('payments.show', $payment->id)
-                        ->with('success', 'Payment created, verified, and PPP secret enabled.');
+                    
+                    // Check if user was blocked and has original profile to restore
+                    if ($invoice->pppSecret->original_ppp_profile_id) {
+                        $this->mikrotikService->restoreOriginalProfile($invoice->pppSecret);
+                        return redirect()->route('payments.show', $payment->id)
+                            ->with('success', 'Payment created, verified, and original profile restored.');
+                    } else if (!$invoice->pppSecret->is_active) {
+                        // Just enable if not active but no original profile to restore
+                        $this->mikrotikService->enablePppSecret($invoice->pppSecret);
+                        return redirect()->route('payments.show', $payment->id)
+                            ->with('success', 'Payment created, verified, and PPP secret enabled.');
+                    }
+                    
                 } catch (Exception $e) {
                     return redirect()->route('payments.show', $payment->id)
-                        ->with('warning', 'Payment created and verified, but failed to enable PPP secret: ' . $e->getMessage());
+                        ->with('warning', 'Payment created and verified, but failed to restore profile: ' . $e->getMessage());
                 }
             }
             
@@ -261,16 +271,26 @@ class PaymentController extends Controller
             $invoice = Invoice::find($data['invoice_id']);
             $invoice->updateStatus();
             
-            // If invoice is now paid and has a PPP secret that's disabled, enable it
-            if ($invoice->status === 'paid' && $invoice->pppSecret && !$invoice->pppSecret->is_active) {
+            // If invoice is now paid and has a PPP secret, restore original profile or enable it
+            if ($invoice->status === 'paid' && $invoice->pppSecret) {
                 try {
                     $this->mikrotikService->connect();
-                    $this->mikrotikService->enablePppSecret($invoice->pppSecret);
-                    return redirect()->route('payments.show', $payment->id)
-                        ->with('success', 'Payment updated, verified, and PPP secret enabled.');
+                    
+                    // Check if user was blocked and has original profile to restore
+                    if ($invoice->pppSecret->original_ppp_profile_id) {
+                        $this->mikrotikService->restoreOriginalProfile($invoice->pppSecret);
+                        return redirect()->route('payments.show', $payment->id)
+                            ->with('success', 'Payment updated, verified, and original profile restored.');
+                    } else if (!$invoice->pppSecret->is_active) {
+                        // Just enable if not active but no original profile to restore
+                        $this->mikrotikService->enablePppSecret($invoice->pppSecret);
+                        return redirect()->route('payments.show', $payment->id)
+                            ->with('success', 'Payment updated, verified, and PPP secret enabled.');
+                    }
+                    
                 } catch (Exception $e) {
                     return redirect()->route('payments.show', $payment->id)
-                        ->with('warning', 'Payment updated and verified, but failed to enable PPP secret: ' . $e->getMessage());
+                        ->with('warning', 'Payment updated and verified, but failed to restore profile: ' . $e->getMessage());
                 }
             }
             
@@ -326,16 +346,26 @@ class PaymentController extends Controller
         $invoice = $payment->invoice;
         $invoice->updateStatus();
         
-        // If invoice is now paid and has a PPP secret that's disabled, enable it
-        if ($invoice->status === 'paid' && $invoice->pppSecret && !$invoice->pppSecret->is_active) {
+        // If invoice is now paid and has a PPP secret, restore original profile or enable it
+        if ($invoice->status === 'paid' && $invoice->pppSecret) {
             try {
                 $this->mikrotikService->connect();
-                $this->mikrotikService->enablePppSecret($invoice->pppSecret);
-                return redirect()->route('payments.show', $payment->id)
-                    ->with('success', 'Payment verified and PPP secret enabled successfully.');
+                
+                // Check if user was blocked and has original profile to restore
+                if ($invoice->pppSecret->original_ppp_profile_id) {
+                    $this->mikrotikService->restoreOriginalProfile($invoice->pppSecret);
+                    return redirect()->route('payments.show', $payment->id)
+                        ->with('success', 'Payment verified and original profile restored successfully.');
+                } else if (!$invoice->pppSecret->is_active) {
+                    // Just enable if not active but no original profile to restore
+                    $this->mikrotikService->enablePppSecret($invoice->pppSecret);
+                    return redirect()->route('payments.show', $payment->id)
+                        ->with('success', 'Payment verified and PPP secret enabled successfully.');
+                }
+                
             } catch (Exception $e) {
                 return redirect()->route('payments.show', $payment->id)
-                    ->with('warning', 'Payment verified, but failed to enable PPP secret: ' . $e->getMessage());
+                    ->with('warning', 'Payment verified, but failed to restore profile: ' . $e->getMessage());
             }
         }
         

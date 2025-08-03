@@ -161,7 +161,8 @@ class PppSecretController extends Controller
         try {
             // Check if force refresh is requested
             if ($request->has('force_refresh')) {
-                $realTimeStatus = $pppSecret->refreshRealTimeConnectionStatus();
+                $aggressive = $request->get('aggressive', false);
+                $realTimeStatus = $pppSecret->refreshRealTimeConnectionStatus($aggressive);
             } else {
                 $realTimeStatus = $pppSecret->getRealTimeConnectionStatus();
             }

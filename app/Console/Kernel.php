@@ -34,6 +34,13 @@ class Kernel extends ConsoleKernel
                  ->withoutOverlapping()
                  ->appendOutputTo(storage_path('logs/overdue-processing.log'));
         
+        // Auto-block overdue users every hour at 10 minutes past the hour
+        $schedule->command('users:auto-block-overdue')
+                 ->hourly()
+                 ->at(10)
+                 ->withoutOverlapping()
+                 ->appendOutputTo(storage_path('logs/auto-block.log'));
+        
         // Sync PPP profiles and secrets with MikroTik daily at 2 AM
         $schedule->command('mikrotik:sync')
                  ->dailyAt('02:00')

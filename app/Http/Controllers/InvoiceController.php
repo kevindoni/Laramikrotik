@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\CompanySettingsController;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -553,5 +554,49 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.overdue')
                 ->with('error', 'Failed to process overdue invoices: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Show invoice preview for printing.
+     *
+     * @param  \App\Models\Invoice  $invoice
+     * @return \Illuminate\Http\Response
+     */
+    public function preview(Invoice $invoice)
+    {
+        $invoice->load(['customer', 'pppSecret.pppProfile']);
+        $companySettings = CompanySettingsController::getSettings();
+        
+        return view('invoices.preview', compact('invoice', 'companySettings'));
+    }
+
+    /**
+     * Generate PDF for invoice.
+     *
+     * @param  \App\Models\Invoice  $invoice
+     * @return \Illuminate\Http\Response
+     */
+    public function pdf(Invoice $invoice)
+    {
+        $invoice->load(['customer', 'pppSecret.pppProfile']);
+        $companySettings = CompanySettingsController::getSettings();
+        
+        // Return the preview view for PDF generation
+        // Browser's print function will handle PDF creation
+        return view('invoices.pdf', compact('invoice', 'companySettings'));
+    }
+
+    /**
+     * Download invoice as PDF using browser's print function.
+     *
+     * @param  \App\Models\Invoice  $invoice
+     * @return \Illuminate\Http\Response
+     */
+    public function download(Invoice $invoice)
+    {
+        $invoice->load(['customer', 'pppSecret.pppProfile']);
+        $companySettings = CompanySettingsController::getSettings();
+        
+        return view('invoices.download', compact('invoice', 'companySettings'));
     }
 }

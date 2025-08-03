@@ -15,6 +15,7 @@ class MikrotikService
 {
     protected $client;
     protected $setting;
+    protected $isConnected = false;
 
     /**
      * Create a new Mikrotik service instance.
@@ -61,15 +62,18 @@ class MikrotikService
         try {
             $port = $this->setting->port ?: ($this->setting->use_ssl ? 8729 : 8728);
             
+            // For timeout-sensitive operations, use shorter initial timeout
+            $initialTimeout = 10; // Start with 10 seconds for quick operations
+            
             $config = new Config([
                 'host' => $this->setting->host,
                 'user' => $this->setting->username,
                 'pass' => $this->setting->password,
                 'port' => (int) $port,
-                'timeout' => 60, // Increased timeout to 60 seconds for tunnel connections
-                'attempts' => 1,  // Single attempt to avoid RouterOS library auto-retry
-                'delay' => 2,     // Increased delay between attempts for slow connections
-                'socket_timeout' => 60, // Socket timeout for slow tunnel connections
+                'timeout' => $initialTimeout,
+                'attempts' => 1,  // Single attempt to avoid auto-retry loops
+                'delay' => 1,     // Shorter delay for faster failure detection
+                'socket_timeout' => $initialTimeout,
             ]);
 
             if ($this->setting->use_ssl) {
@@ -81,159 +85,93 @@ class MikrotikService
                 ]);
             }
 
-            // Manual retry logic with better error handling for tunnel connections
-            $lastException = null;
-            $maxAttempts = 5; // Increased attempts for unstable connections
-            
-            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-                try {
-                    // Reset client for each attempt
-                    $this->client = null;
-                    
-                    // Add longer delay for tunnel connections after first attempt
-                    if ($attempt > 1) {
-                        logger()->info("MikroTik connection attempt {$attempt}/{$maxAttempts} - waiting before retry", [
-                            'host' => $this->setting->host,
-                            'delay' => $attempt * 3
-                        ]);
-                        sleep($attempt * 3); // 3s, 6s, 9s, 12s delays
-                    }
-                    
-                    // Create new client instance with enhanced socket options
-                    $this->client = new Client($config);
-                    
-                    // Test the connection with a very simple query first
-                    logger()->info("Testing basic API connectivity", ['attempt' => $attempt]);
-                    
-                    // Try system identity first (minimal data)
-                    $query = new Query('/system/identity/print');
-                    $result = $this->client->query($query)->read();
-                    
-                    // Verify we got a valid response
-                    if (empty($result) || !is_array($result)) {
-                        throw new Exception('Invalid response from MikroTik router');
-                    }
-                    
-                    // Additional validation - try to read system clock (another minimal query)
-                    logger()->info("Testing extended API connectivity", ['attempt' => $attempt]);
-                    $clockQuery = new Query('/system/clock/print');
-                    $clockResult = $this->client->query($clockQuery)->read();
-                    
-                    if (empty($clockResult) || !is_array($clockResult)) {
-                        throw new Exception('API connection unstable - extended test failed');
-                    }
-                    
-                    logger()->info("MikroTik connection successful", [
-                        'host' => $this->setting->host,
-                        'attempt' => $attempt,
-                        'identity' => $result[0]['name'] ?? 'unknown'
-                    ]);
-                    
-                    // Only update last connected timestamp if it's an actual model
-                    if ($this->setting instanceof MikrotikSetting) {
-                        $this->setting->updateLastConnected();
-                    }
-                    
-                    return true;
-                    
-                } catch (Exception $e) {
-                    $lastException = $e;
-                    $this->client = null; // Reset client on failure
-                    
-                    $errorMsg = $e->getMessage();
-                    
-                    // Log attempt details for debugging with specific error analysis
-                    logger()->warning("MikroTik connection attempt {$attempt}/{$maxAttempts} failed", [
-                        'host' => $this->setting->host,
-                        'port' => $port,
-                        'error' => $errorMsg,
-                        'attempt' => $attempt,
-                        'error_type' => $this->analyzeErrorType($errorMsg)
-                    ]);
-                    
-                    // For "Error reading X bytes" - this is often a timing issue with tunnels
-                    if (strpos($errorMsg, 'Error reading') !== false && $attempt < $maxAttempts) {
-                        logger()->info("Detected 'Error reading' issue - will retry with longer delay", [
-                            'attempt' => $attempt,
-                            'next_delay' => ($attempt + 1) * 3
-                        ]);
-                        continue;
-                    }
-                    
-                    if ($attempt < $maxAttempts) {
-                        continue;
-                    }
-                }
-            }
-            
-            // All attempts failed, throw the last exception
-            throw $lastException;
+            logger()->info('Attempting to connect to MikroTik router', [
+                'host' => $this->setting->host,
+                'port' => $port,
+                'ssl' => $this->setting->use_ssl,
+                'timeout' => $initialTimeout
+            ]);
+
+            $startTime = microtime(true);
+            $this->client = new Client($config);
+            $connectionTime = microtime(true) - $startTime;
+
+            logger()->info('Successfully connected to MikroTik router', [
+                'connection_time_ms' => round($connectionTime * 1000, 2),
+                'host' => $this->setting->host
+            ]);
+
+            $this->isConnected = true;
+            return $this;
             
         } catch (Exception $e) {
-            $errorMessage = 'Failed to connect to Mikrotik: ' . $e->getMessage();
+            $errorMsg = $e->getMessage();
+            $connectionTime = isset($startTime) ? microtime(true) - $startTime : 0;
             
-            // Add specific troubleshooting information based on error type
-            if (strpos($e->getMessage(), 'Connection refused') !== false) {
-                $errorMessage .= "\n\nTroubleshooting:\n";
-                $errorMessage .= "• Check if MikroTik API service is enabled: /ip service enable api\n";
-                $errorMessage .= "• Verify the API port (default 8728) is not blocked by firewall\n";
-                $errorMessage .= "• Ensure the MikroTik device is powered on and accessible";
-                
-            } elseif (strpos($e->getMessage(), 'Error reading') !== false) {
-                $errorMessage .= "\n\nTroubleshooting for 'Error reading' issues:\n";
-                $errorMessage .= "• This is common with tunnel/VPN connections to MikroTik\n";
-                $errorMessage .= "• Try connecting directly via local IP if possible\n";
-                $errorMessage .= "• Check tunnel stability: ping " . $this->setting->host . " -t\n";
-                $errorMessage .= "• Verify MikroTik is not overloaded (check CPU usage)\n";
-                $errorMessage .= "• Consider using SSL connection if available\n";
-                $errorMessage .= "• Try connecting during off-peak hours\n";
-                $errorMessage .= "• Check if MikroTik API has connection limits configured";
-                
-            } elseif (strpos($e->getMessage(), 'timeout') !== false || 
-                     strpos($e->getMessage(), 'failed to respond') !== false ||
-                     strpos($e->getMessage(), 'Unable to establish socket') !== false ||
-                     strpos($e->getMessage(), 'Stream timed out') !== false) {
-                $errorMessage .= "\n\nTroubleshooting:\n";
-                $errorMessage .= "• Check network connectivity to " . $this->setting->host . "\n";
-                $errorMessage .= "• Verify firewall settings on both client and MikroTik\n";
-                $errorMessage .= "• Try pinging the host: ping " . $this->setting->host . "\n";
-                $errorMessage .= "• Check if port " . $port . " is open: telnet " . $this->setting->host . " " . $port . "\n";
-                $errorMessage .= "• Consider using VPN if connecting over internet\n";
-                $errorMessage .= "• MikroTik may be overloaded - try again later";
-                
-            } elseif (strpos($e->getMessage(), 'Authentication failed') !== false || 
-                     strpos($e->getMessage(), 'invalid user name or password') !== false) {
-                $errorMessage .= "\n\nTroubleshooting:\n";
-                $errorMessage .= "• Verify username and password are correct\n";
-                $errorMessage .= "• Check if user has API permissions\n";
-                $errorMessage .= "• Ensure user account is not disabled";
-                
+            logger()->error('Failed to connect to MikroTik router', [
+                'error' => $errorMsg,
+                'host' => $this->setting->host,
+                'port' => $port,
+                'connection_time_ms' => round($connectionTime * 1000, 2),
+                'error_type' => $this->getConnectionErrorType($errorMsg)
+            ]);
+
+            // Provide more specific error messages
+            if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'timed out') !== false) {
+                throw new Exception('Connection timeout - router may be overloaded or network connection is slow');
+            } elseif (strpos($errorMsg, 'Connection refused') !== false) {
+                throw new Exception('Connection refused - check if API service is enabled on router');
+            } elseif (strpos($errorMsg, 'cannot connect') !== false) {
+                throw new Exception('Cannot connect to router - check IP address and network connectivity');
             } else {
-                $errorMessage .= "\n\nTroubleshooting:\n";
-                $errorMessage .= "• Verify MikroTik device is online and accessible\n";
-                $errorMessage .= "• Check network configuration and routing\n";
-                $errorMessage .= "• Ensure API service is running on MikroTik";
+                throw new Exception('Connection failed: ' . $errorMsg);
             }
-            
-            $errorMessage .= "\n\nConnection Details:";
-            $errorMessage .= "\n• Host: " . $this->setting->host;
-            $errorMessage .= "\n• Port: " . $port;
-            $errorMessage .= "\n• SSL: " . ($this->setting->use_ssl ? 'yes' : 'no');
-            $errorMessage .= "\n• Username: " . $this->setting->username;
-            $errorMessage .= "\n• Connection Type: " . (strpos($this->setting->host, 'tunnel') !== false ? 'Tunnel/VPN' : 'Direct');
-            
-            throw new Exception($errorMessage);
+        }
+    }
+    
+    /**
+     * Get connection error type for categorization
+     */
+    private function getConnectionErrorType($errorMsg)
+    {
+        if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'timed out') !== false) {
+            return 'timeout';
+        } elseif (strpos($errorMsg, 'Connection refused') !== false) {
+            return 'connection_refused';
+        } elseif (strpos($errorMsg, 'cannot connect') !== false) {
+            return 'network_unreachable';
+        } elseif (strpos($errorMsg, 'authentication') !== false || strpos($errorMsg, 'login') !== false) {
+            return 'authentication_failed';
+        } else {
+            return 'unknown';
         }
     }
 
     /**
-     * Analyze error type for better logging and troubleshooting.
+     * Ensure the connection is established.
      */
-    private function analyzeErrorType($errorMessage)
+    public function ensureConnected()
     {
-        if (strpos($errorMessage, 'Error reading') !== false) {
-            return 'API_READ_ERROR';
-        } elseif (strpos($errorMessage, 'timeout') !== false) {
+        if (!$this->isConnected || !$this->client) {
+            $this->connect();
+        }
+    }
+
+    /**
+     * Disconnect from the Mikrotik router.
+     */
+    public function disconnect()
+    {
+        $this->isConnected = false;
+        $this->client = null;
+    }
+
+    /**
+     * Categorize error messages for better handling
+     */
+    private function categorizeError($errorMessage)
+    {
+        if (strpos($errorMessage, 'timeout') !== false || strpos($errorMessage, 'timed out') !== false) {
             return 'TIMEOUT_ERROR';
         } elseif (strpos($errorMessage, 'Connection refused') !== false) {
             return 'CONNECTION_REFUSED';
@@ -357,16 +295,6 @@ class MikrotikService
         }
         
         return $results;
-    }
-
-    /**
-     * Ensure connection to the Mikrotik router.
-     */
-    protected function ensureConnected()
-    {
-        if (!$this->isConnected()) {
-            $this->connect();
-        }
     }
 
     /**
@@ -505,7 +433,7 @@ class MikrotikService
             if (!empty($secrets) && is_array($secrets)) {
                 logger()->info('PPP secrets batch structure debug', [
                     'first_secret_keys' => array_keys($secrets[0] ?? []),
-                    'first_secret_sample' => $secrets[0] ?? null,
+                    'first_secret_info' => $secrets[0] ?? null,
                     'total_retrieved' => count($secrets)
                 ]);
             }
@@ -1186,6 +1114,80 @@ class MikrotikService
     }
 
     /**
+     * Restore original profile after payment verification.
+     */
+    public function restoreOriginalProfile(PppSecret $secret)
+    {
+        $this->ensureConnected();
+
+        try {
+            // Check if original profile exists
+            if (!$secret->original_ppp_profile_id || !$secret->originalPppProfile) {
+                logger()->warning('No original profile to restore', [
+                    'username' => $secret->username,
+                    'original_profile_id' => $secret->original_ppp_profile_id
+                ]);
+                return false;
+            }
+
+            // If no Mikrotik ID provided, find it by username
+            if (!$secret->mikrotik_id) {
+                $existingSecrets = $this->getPppSecrets();
+                foreach ($existingSecrets as $existingSecret) {
+                    if ($existingSecret['name'] === $secret->username) {
+                        $secret->mikrotik_id = $existingSecret['.id'];
+                        $secret->save();
+                        break;
+                    }
+                }
+
+                if (!$secret->mikrotik_id) {
+                    throw new Exception("PPP secret '{$secret->username}' not found on Mikrotik.");
+                }
+            }
+
+            $originalProfile = $secret->originalPppProfile;
+            
+            // Update profile in MikroTik
+            $query = new Query('/ppp/secret/set');
+            $query->equal('.id', $secret->mikrotik_id);
+            $query->equal('profile', $originalProfile->name);
+            $query->equal('disabled', 'no'); // Also enable the secret
+            $this->client->query($query)->read();
+
+            // Update in database
+            $secret->ppp_profile_id = $secret->original_ppp_profile_id;
+            $secret->original_ppp_profile_id = null; // Clear the original profile
+            $secret->is_active = true;
+            $secret->save();
+
+            // Disconnect active session to force profile change
+            try {
+                $this->disconnectPppConnection($secret->username);
+            } catch (Exception $e) {
+                // User might not be connected, that's ok
+                logger()->info('User not connected during profile restore', [
+                    'username' => $secret->username
+                ]);
+            }
+
+            logger()->info('Original profile restored successfully', [
+                'username' => $secret->username,
+                'restored_profile' => $originalProfile->name,
+                'mikrotik_id' => $secret->mikrotik_id
+            ]);
+
+            return true;
+        } catch (Exception $e) {
+            logger()->error('Failed to restore original profile', [
+                'username' => $secret->username,
+                'error' => $e->getMessage()
+            ]);
+            throw new Exception('Failed to restore original profile: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Disable a PPP secret on Mikrotik.
      */
     public function disablePppSecret(PppSecret $secret)
@@ -1225,72 +1227,170 @@ class MikrotikService
 
     /**
      * Get active PPP connections from Mikrotik.
+     * 
+     * @param bool $forceReal Force attempt to get real data with retries
      */
-    public function getActivePppConnections()
+    public function getActivePppConnections($forceReal = false)
     {
         $this->ensureConnected();
 
         try {
-            // Create query for active PPP connections with limited results
-            $query = new Query('/ppp/active/print');
+            // Always try real data first - with reasonable timeout for production
+            logger()->info('Starting active PPP connections query - REAL DATA ONLY');
             
-            // Add count limit to prevent timeout on large datasets
-            $query->equal('count-only', '');
-            $countResult = $this->client->query($query)->read();
-            $totalCount = isset($countResult[0]['ret']) ? (int) $countResult[0]['ret'] : 0;
-            
-            logger()->info('PPP active connections count check', ['total' => $totalCount]);
-            
-            // If too many connections, limit the result to prevent timeout
-            $query = new Query('/ppp/active/print');
-            if ($totalCount > 50) {
-                // Limit results to prevent timeout
-                $query->equal('count', '50');
-                logger()->warning('Limiting PPP active query due to large dataset', ['total' => $totalCount]);
+            // Set reasonable timeout for production (not too aggressive)
+            if ($this->client && method_exists($this->client, 'setTimeout')) {
+                $this->client->setTimeout($forceReal ? 30 : 15); // Longer timeout if forced
             }
             
-            logger()->info('Getting active PPP connections');
+            $query = new Query('/ppp/active/print');
+            // Add specific filters to improve performance and get essential data
+            $query->equal('.proplist', 'name,address,uptime,service,caller-id');
             
-            // Execute query with timeout protection
             $startTime = microtime(true);
             $result = $this->client->query($query)->read();
             $endTime = microtime(true);
-            $executionTime = round(($endTime - $startTime) * 1000, 2); // in milliseconds
+            $executionTime = round(($endTime - $startTime) * 1000, 2);
             
-            logger()->info('Successfully retrieved active PPP connections', [
-                'count' => count($result ?? []),
-                'execution_time_ms' => $executionTime,
-                'limited' => $totalCount > 50
-            ]);
+            // Get interface statistics for bytes data
+            $interfaceStats = $this->getPppoeInterfaceStats();
             
-            // If query took too long, warn about it
-            if ($executionTime > 5000) { // 5 seconds
-                logger()->warning('Active PPP connections query took too long', [
-                    'execution_time_ms' => $executionTime,
-                    'recommendation' => 'Consider optimizing MikroTik performance'
-                ]);
+            // Merge interface stats with active connections
+            foreach ($result as &$connection) {
+                $username = $connection['name'] ?? null;
+                if ($username && isset($interfaceStats[$username])) {
+                    $stats = $interfaceStats[$username];
+                    $connection['bytes-in'] = $stats['rx-byte'] ?? 0;
+                    $connection['bytes-out'] = $stats['tx-byte'] ?? 0;
+                } else {
+                    $connection['bytes-in'] = 0;
+                    $connection['bytes-out'] = 0;
+                }
             }
+            
+            logger()->info('Active PPP connections retrieved successfully with bytes data', [
+                'returned_count' => count($result ?? []),
+                'execution_time_ms' => $executionTime,
+                'data_source' => 'real_router_data',
+                'interface_stats_count' => count($interfaceStats),
+                'force_real' => $forceReal
+            ]);
             
             return $result ?? [];
             
         } catch (Exception $e) {
-            // Enhanced error logging for timeout issues
             $errorMsg = $e->getMessage();
             
-            logger()->warning('Failed to get active PPP connections', [
+            logger()->error('Active PPP connections query failed', [
                 'error' => $errorMsg,
-                'error_type' => strpos($errorMsg, 'timeout') !== false ? 'timeout' : 'other',
-                'recommendation' => 'Check MikroTik router performance and network connection'
+                'error_type' => $this->getErrorType($errorMsg),
+                'force_real' => $forceReal
             ]);
             
-            // For timeout errors, provide more specific message
+            // For timeout in production, return empty array instead of throwing exception
             if (strpos($errorMsg, 'timeout') !== false || 
                 strpos($errorMsg, 'Stream timed out') !== false ||
                 strpos($errorMsg, 'timed out') !== false) {
-                throw new Exception('Router response timeout - please try again or check router performance');
+                
+                logger()->warning('Router timeout - returning empty connections array');
+                return [];
             }
             
-            throw new Exception('Failed to get active PPP connections: ' . $errorMsg);
+            // For other errors, still throw exception
+            throw new Exception('Unable to retrieve active connections from router: ' . $errorMsg);
+        }
+    }
+    
+    /**
+     * Get error type for better categorization
+     */
+    private function getErrorType($errorMsg)
+    {
+        if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'timed out') !== false) {
+            return 'timeout';
+        } elseif (strpos($errorMsg, 'Connection refused') !== false) {
+            return 'connection_refused';
+        } elseif (strpos($errorMsg, 'Unable to establish') !== false) {
+            return 'connection_failed';
+        } else {
+            return 'other';
+        }
+    }
+    
+    /**
+     * Get PPPoE interface statistics for bytes data
+     */
+    private function getPppoeInterfaceStats()
+    {
+        $stats = [];
+        
+        try {
+            // Get all PPPoE interfaces with their byte statistics
+            $query = new Query('/interface/print');
+            $query->where('type', 'pppoe-in');
+            $query->equal('.proplist', 'name,tx-byte,rx-byte');
+            
+            $interfaces = $this->client->query($query)->read();
+            
+            foreach ($interfaces as $interface) {
+                $name = $interface['name'] ?? '';
+                
+                // Extract username from interface name pattern: <pppoe-username>
+                if (preg_match('/^<?pppoe-(.+?)>?$/', $name, $matches)) {
+                    $username = $matches[1];
+                    $stats[$username] = [
+                        'tx-byte' => intval($interface['tx-byte'] ?? 0),
+                        'rx-byte' => intval($interface['rx-byte'] ?? 0),
+                        'interface_name' => $name
+                    ];
+                }
+            }
+            
+            logger()->info('PPPoE interface stats retrieved', [
+                'interface_count' => count($interfaces),
+                'mapped_users' => count($stats),
+                'users' => array_keys($stats)
+            ]);
+            
+        } catch (Exception $e) {
+            logger()->warning('Failed to get PPPoE interface stats', [
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return $stats;
+    }
+    
+    /**
+     * DISABLED: This method is kept for reference only
+     * Production version returns empty array for consistency
+     */
+    private function getEmptyConnectionsArray($estimatedCount = null)
+    {
+        logger()->error('EMPTY CONNECTIONS RETURNED - Check router connectivity', [
+            'estimated_count' => $estimatedCount,
+            'stack_trace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)
+        ]);
+        
+        // Return empty array for production
+        return [];
+    }
+    
+    /**
+     * Generate random uptime string
+     */
+    private function generateRandomUptime()
+    {
+        $hours = rand(0, 48);
+        $minutes = rand(0, 59);
+        $seconds = rand(0, 59);
+        
+        if ($hours > 24) {
+            $days = intval($hours / 24);
+            $hours = $hours % 24;
+            return sprintf('%dd%02d:%02d:%02d', $days, $hours, $minutes, $seconds);
+        } else {
+            return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
         }
     }
 

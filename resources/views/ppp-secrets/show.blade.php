@@ -181,8 +181,40 @@
 
             <!-- Connection Status -->
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">{{ __('Real-time Connection Status') }}</h6>
+                    <div>
+                        @if($realTimeStatus && isset($realTimeStatus['is_fallback']) && $realTimeStatus['is_fallback'])
+                            <span class="badge badge-warning mr-2">
+                                <i class="fas fa-exclamation-triangle"></i> Fallback Data
+                            </span>
+                        @elseif($realTimeStatus && $realTimeStatus['status'] === 'unknown')
+                            <span class="badge badge-warning mr-2">
+                                <i class="fas fa-question-circle"></i> Router Slow
+                            </span>
+                        @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+                            <span class="badge badge-danger mr-2">
+                                <i class="fas fa-clock"></i> Timeout
+                            </span>
+                        @elseif($realTimeStatus)
+                            <span class="badge badge-success mr-2">
+                                <i class="fas fa-check"></i> Live Data
+                            </span>
+                        @endif
+                        
+                        <div class="btn-group" role="group">
+                            <a href="{{ route('ppp-secrets.show', $pppSecret) }}?force_refresh=1" 
+                               class="btn btn-sm btn-outline-primary"
+                               title="Quick refresh (3s timeout)">
+                                <i class="fas fa-sync-alt"></i>
+                            </a>
+                            <a href="{{ route('ppp-secrets.show', $pppSecret) }}?force_refresh=1&aggressive=1" 
+                               class="btn btn-sm btn-outline-success"
+                               title="Deep refresh (extended timeout)">
+                                <i class="fas fa-search-plus"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -201,6 +233,10 @@
                                     <i class="fas fa-hourglass-half fa-3x text-warning mb-2"></i>
                                     <h6 class="text-warning">{{ __('Connection Timeout') }}</h6>
                                     <small class="text-muted">{{ __('MikroTik router is slow to respond') }}</small>
+                                @elseif($realTimeStatus && ($realTimeStatus['status'] === 'unknown' || (isset($realTimeStatus['is_fallback']) && $realTimeStatus['is_fallback'])))
+                                    <i class="fas fa-question-circle fa-3x text-warning mb-2"></i>
+                                    <h6 class="text-warning">{{ __('Status Unknown') }}</h6>
+                                    <small class="text-muted">{{ __('Router performance issues - showing approximate status') }}</small>
                                 @else
                                     <i class="fas fa-exclamation-triangle fa-3x text-warning mb-2"></i>
                                     <h6 class="text-warning">{{ __('Status Unknown') }}</h6>
@@ -236,13 +272,16 @@
                                     </tr>
                                     @endif
                                 </table>
-                            @elseif($realTimeStatus && $realTimeStatus['status'] === 'timeout')
+                            @elseif($realTimeStatus && ($realTimeStatus['status'] === 'timeout' || $realTimeStatus['status'] === 'unknown'))
                                 <div class="alert alert-warning alert-sm mb-3">
                                     <i class="fas fa-exclamation-triangle mr-1"></i>
                                     <strong>{{ __('Real-time data unavailable') }}</strong><br>
                                     {{ $realTimeStatus['message'] ?? __('MikroTik router is responding slowly. Showing last known connection data instead.') }}
                                     @if(isset($realTimeStatus['suggestion']))
                                         <br><small>{{ $realTimeStatus['suggestion'] }}</small>
+                                    @endif
+                                    @if(isset($realTimeStatus['is_fallback']) && $realTimeStatus['is_fallback'])
+                                        <br><small class="text-info"><i class="fas fa-info-circle"></i> Try the "Deep Refresh" button for more accurate data (may take longer).</small>
                                     @endif
                                 </div>
                                 @if($pppSecret->latestUsageLog)
@@ -306,19 +345,22 @@
                                 @if(isset($realTimeStatus['cached_at']))
                                     ({{ __('cached data') }})
                                 @endif
+                                @if(isset($realTimeStatus['method']))
+                                    - {{ $realTimeStatus['method'] }}
+                                @endif
+                                @if(isset($realTimeStatus['query_time_ms']))
+                                    - {{ $realTimeStatus['query_time_ms'] }}ms
+                                @endif
                             </small>
-                            @if($realTimeStatus['status'] === 'timeout')
-                                <span class="badge badge-warning ml-2">
-                                    <i class="fas fa-clock mr-1"></i>{{ __('Auto-refresh in') }} <span id="refresh-countdown">60s</span>
+                            
+                            @if($realTimeStatus['status'] === 'connected')
+                                <span class="badge badge-success ml-2">
+                                    <i class="fas fa-check-circle mr-1"></i>{{ __('Live') }}
                                 </span>
-                            @endif
-                            <button class="btn btn-sm btn-outline-secondary ml-2" onclick="window.location.reload()">
-                                <i class="fas fa-sync-alt"></i> {{ __('Refresh') }}
-                            </button>
-                            @if($realTimeStatus['status'] === 'timeout')
-                                <button class="btn btn-sm btn-outline-warning ml-1" onclick="forceRefresh()">
-                                    <i class="fas fa-bolt"></i> {{ __('Force Refresh') }}
-                                </button>
+                            @elseif($realTimeStatus['status'] === 'timeout' || $realTimeStatus['status'] === 'unknown')
+                                <span class="badge badge-warning ml-2">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Degraded') }}
+                                </span>
                             @endif
                         </div>
                     @endif

@@ -99,6 +99,11 @@ class ProcessOverdueInvoices extends Command
                     $this->warn("  [DRY RUN] Would move to Blokir profile");
                 } else {
                     try {
+                        // Save original profile before blocking (if not already saved)
+                        if (!$secret->original_ppp_profile_id) {
+                            $secret->original_ppp_profile_id = $secret->ppp_profile_id;
+                        }
+                        
                         // Update profile in database
                         $secret->ppp_profile_id = $blokirProfile->id;
                         $secret->save();

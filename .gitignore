@@ -9,7 +9,7 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-
+final_production_validation.php
 /.phpunit.cache
 
 /public/build
