@@ -7616,3 +7616,182 @@
 [2025-08-03 05:03:15] local.INFO: PPP active connections count check {"total":0} 
 [2025-08-03 05:03:15] local.INFO: Getting active PPP connections  
 [2025-08-03 05:03:15] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:04:37] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:04:37] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:04:37] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:04:38] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:04:38] local.INFO: Getting active PPP connections  
+[2025-08-03 05:04:38] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:04:48] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:04:48] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:04:48] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:04:48] local.INFO: Attempting to get MikroTik secrets {"attempt":1} 
+[2025-08-03 05:04:48] local.INFO: Checking PPP secrets count {"attempt":1,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:04:49] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:04:49] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:04:49] local.INFO: Attempting to retrieve PPP secrets {"attempt":1,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:04:49] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":1,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:04:49] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":1,"max_attempts":3} 
+[2025-08-03 05:04:52] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:04:52] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:04:53] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:04:53] local.INFO: Checking PPP secrets count {"attempt":2,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:04:53] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:04:53] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:04:53] local.INFO: Attempting to retrieve PPP secrets {"attempt":2,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:04:53] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":2,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:04:53] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":2,"max_attempts":3} 
+[2025-08-03 05:04:59] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:00] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:00] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:00] local.INFO: Checking PPP secrets count {"attempt":3,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:00] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:05:00] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:00] local.INFO: Attempting to retrieve PPP secrets {"attempt":3,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:05:00] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":3,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:05:00] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":3,"max_attempts":3} 
+[2025-08-03 05:05:00] local.WARNING: Attempt 1 failed {"error":"Failed to get PPP secrets: The MikroTik router has a large number of PPP secrets and queries are timing out. This may be due to system load or database performance issues on the router. Consider reducing the number of secrets or contact your network administrator to optimize the router performance."} 
+[2025-08-03 05:05:03] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:03] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:03] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:03] local.INFO: Attempting to get MikroTik secrets {"attempt":2} 
+[2025-08-03 05:05:03] local.INFO: Checking PPP secrets count {"attempt":1,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:04] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:05:04] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:04] local.INFO: Attempting to retrieve PPP secrets {"attempt":1,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:05:04] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":1,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:05:04] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":1,"max_attempts":3} 
+[2025-08-03 05:05:07] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:08] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:08] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:08] local.INFO: Checking PPP secrets count {"attempt":2,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:08] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:05:08] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:08] local.INFO: Attempting to retrieve PPP secrets {"attempt":2,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:05:08] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":2,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:05:08] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":2,"max_attempts":3} 
+[2025-08-03 05:05:15] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:15] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:15] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:15] local.INFO: Checking PPP secrets count {"attempt":3,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:15] local.INFO: Count result debug {"raw_result":{"after":{"ret":"13"}},"result_structure":["after"],"first_element":"no first element"} 
+[2025-08-03 05:05:15] local.INFO: Found PPP secrets {"count":13,"host":"id-11.tunnel.id"} 
+[2025-08-03 05:05:15] local.INFO: Attempting to retrieve PPP secrets {"attempt":3,"count":13,"host":"id-11.tunnel.id","timeout":60} 
+[2025-08-03 05:05:15] local.ERROR: Failed to get PPP secrets from MikroTik {"error":"Stream timed out","attempt":3,"host":"id-11.tunnel.id","error_type":"RouterOS\\Exceptions\\StreamException"} 
+[2025-08-03 05:05:15] local.INFO: Detected timeout/connection error, will reconnect on next attempt {"attempt":3,"max_attempts":3} 
+[2025-08-03 05:05:15] local.WARNING: Attempt 2 failed {"error":"Failed to get PPP secrets: The MikroTik router has a large number of PPP secrets and queries are timing out. This may be due to system load or database performance issues on the router. Consider reducing the number of secrets or contact your network administrator to optimize the router performance."} 
+[2025-08-03 05:05:20] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:20] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:20] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:20] local.INFO: Attempting to get MikroTik secrets {"attempt":3} 
+[2025-08-03 05:05:20] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:21] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:21] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:22] local.WARNING: Attempt 3 failed {"error":"Stream timed out"} 
+[2025-08-03 05:05:22] local.ERROR: PPP secrets sync failed {"error":"Stream timed out","trace":"#0 D:\\laragon\\www\\Laramikrotik\\vendor\\evilfreelancer\\routeros-api-php\\src\\APIConnector.php(54): RouterOS\\Streams\\ResourceStream->read(36)
+#1 D:\\laragon\\www\\Laramikrotik\\vendor\\evilfreelancer\\routeros-api-php\\src\\Client.php(262): RouterOS\\APIConnector->readWord()
+#2 D:\\laragon\\www\\Laramikrotik\\vendor\\evilfreelancer\\routeros-api-php\\src\\Client.php(317): RouterOS\\Client->readRAW(Array)
+#3 D:\\laragon\\www\\Laramikrotik\\app\\Http\\Controllers\\PppSecretController.php(981): RouterOS\\Client->read()
+#4 D:\\laragon\\www\\Laramikrotik\\app\\Http\\Controllers\\PppSecretController.php(795): App\\Http\\Controllers\\PppSecretController->getMikrotikSecretsWithRetry()
+#5 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Controller.php(54): App\\Http\\Controllers\\PppSecretController->syncFromMikrotik()
+#6 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\ControllerDispatcher.php(44): Illuminate\\Routing\\Controller->callAction('syncFromMikroti...', Array)
+#7 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Route.php(266): Illuminate\\Routing\\ControllerDispatcher->dispatch(Object(Illuminate\\Routing\\Route), Object(App\\Http\\Controllers\\PppSecretController), 'syncFromMikroti...')
+#8 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Route.php(212): Illuminate\\Routing\\Route->runController()
+#9 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Router.php(809): Illuminate\\Routing\\Route->run()
+#10 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(170): Illuminate\\Routing\\Router->{closure:Illuminate\\Routing\\Router::runRouteWithinStack():808}(Object(Illuminate\\Http\\Request))
+#11 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Middleware\\SubstituteBindings.php(51): Illuminate\\Pipeline\\Pipeline->{closure:Illuminate\\Pipeline\\Pipeline::prepareDestination():168}(Object(Illuminate\\Http\\Request))
+#12 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Routing\\Middleware\\SubstituteBindings->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#13 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Auth\\Middleware\\Authenticate.php(64): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#14 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Auth\\Middleware\\Authenticate->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#15 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\VerifyCsrfToken.php(88): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#16 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Foundation\\Http\\Middleware\\VerifyCsrfToken->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#17 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\View\\Middleware\\ShareErrorsFromSession.php(49): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#18 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\View\\Middleware\\ShareErrorsFromSession->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#19 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Session\\Middleware\\StartSession.php(121): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#20 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Session\\Middleware\\StartSession.php(64): Illuminate\\Session\\Middleware\\StartSession->handleStatefulRequest(Object(Illuminate\\Http\\Request), Object(Illuminate\\Session\\Store), Object(Closure))
+#21 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Session\\Middleware\\StartSession->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#22 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Cookie\\Middleware\\AddQueuedCookiesToResponse.php(37): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#23 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Cookie\\Middleware\\AddQueuedCookiesToResponse->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#24 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Cookie\\Middleware\\EncryptCookies.php(75): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#25 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Cookie\\Middleware\\EncryptCookies->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#26 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(127): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#27 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Router.php(808): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))
+#28 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Router.php(787): Illuminate\\Routing\\Router->runRouteWithinStack(Object(Illuminate\\Routing\\Route), Object(Illuminate\\Http\\Request))
+#29 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Router.php(751): Illuminate\\Routing\\Router->runRoute(Object(Illuminate\\Http\\Request), Object(Illuminate\\Routing\\Route))
+#30 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Routing\\Router.php(740): Illuminate\\Routing\\Router->dispatchToRoute(Object(Illuminate\\Http\\Request))
+#31 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Kernel.php(201): Illuminate\\Routing\\Router->dispatch(Object(Illuminate\\Http\\Request))
+#32 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(170): Illuminate\\Foundation\\Http\\Kernel->{closure:Illuminate\\Foundation\\Http\\Kernel::dispatchToRouter():198}(Object(Illuminate\\Http\\Request))
+#33 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest.php(21): Illuminate\\Pipeline\\Pipeline->{closure:Illuminate\\Pipeline\\Pipeline::prepareDestination():168}(Object(Illuminate\\Http\\Request))
+#34 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\ConvertEmptyStringsToNull.php(31): Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#35 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Foundation\\Http\\Middleware\\ConvertEmptyStringsToNull->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#36 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest.php(21): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#37 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\TrimStrings.php(51): Illuminate\\Foundation\\Http\\Middleware\\TransformsRequest->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#38 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Foundation\\Http\\Middleware\\TrimStrings->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#39 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Http\\Middleware\\ValidatePostSize.php(27): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#40 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Http\\Middleware\\ValidatePostSize->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#41 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Middleware\\PreventRequestsDuringMaintenance.php(110): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#42 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Foundation\\Http\\Middleware\\PreventRequestsDuringMaintenance->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#43 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Http\\Middleware\\HandleCors.php(49): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#44 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Http\\Middleware\\HandleCors->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#45 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Http\\Middleware\\TrustProxies.php(58): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#46 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(209): Illuminate\\Http\\Middleware\\TrustProxies->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+#47 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Pipeline\\Pipeline.php(127): Illuminate\\Pipeline\\Pipeline->{closure:{closure:Illuminate\\Pipeline\\Pipeline::carry():184}:185}(Object(Illuminate\\Http\\Request))
+#48 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Kernel.php(176): Illuminate\\Pipeline\\Pipeline->then(Object(Closure))
+#49 D:\\laragon\\www\\Laramikrotik\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Http\\Kernel.php(145): Illuminate\\Foundation\\Http\\Kernel->sendRequestThroughRouter(Object(Illuminate\\Http\\Request))
+#50 D:\\laragon\\www\\Laramikrotik\\public\\index.php(54): Illuminate\\Foundation\\Http\\Kernel->handle(Object(Illuminate\\Http\\Request))
+#51 {main}"} 
+[2025-08-03 05:05:54] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:54] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:55] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:55] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:05:55] local.INFO: Getting active PPP connections  
+[2025-08-03 05:05:55] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:05:59] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:05:59] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:05:59] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:05:59] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:05:59] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:00] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:02] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:02] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:02] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:03] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:03] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:03] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:04] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:05] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:05] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:05] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:05] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:05] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:07] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:07] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:08] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:08] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:08] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:08] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:18] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:19] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:19] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:19] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:19] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:19] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:29] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:30] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:30] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:30] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:30] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:30] local.INFO: Successfully retrieved active PPP connections {"count":13,"execution_time_ms":204.85,"limited":false} 
+[2025-08-03 05:06:30] local.INFO: Connection logs sync not implemented yet  
+[2025-08-03 05:06:40] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:40] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:41] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:41] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:41] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:41] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
+[2025-08-03 05:06:47] local.INFO: Testing basic API connectivity {"attempt":1} 
+[2025-08-03 05:06:48] local.INFO: Testing extended API connectivity {"attempt":1} 
+[2025-08-03 05:06:48] local.INFO: MikroTik connection successful {"host":"id-11.tunnel.id","attempt":1,"identity":"MikroTik"} 
+[2025-08-03 05:06:48] local.INFO: PPP active connections count check {"total":0} 
+[2025-08-03 05:06:48] local.INFO: Getting active PPP connections  
+[2025-08-03 05:06:48] local.WARNING: Failed to get active PPP connections {"error":"Stream timed out","error_type":"other","recommendation":"Check MikroTik router performance and network connection"} 
