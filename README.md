@@ -122,19 +122,24 @@ php artisan serve
 ## 📸 Screenshots
 
 ### System Health Monitoring Dashboard ⭐ *NEW*
-![System Health](https://via.placeholder.com/800x400?text=System+Health+Monitoring+Dashboard)
+![System Health](<img width="1901" height="951" alt="8" src="https://github.com/user-attachments/assets/3dd6b428-30d9-4b3a-b2c7-851d7078dad7" />
+)
 
 ### Dashboard Analytics
-![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+Analytics)
+![Dashboard](<img width="1905" height="951" alt="1" src="https://github.com/user-attachments/assets/041f0901-cb6c-4fdc-a09f-05b12e9cda1f" />
+)
 
 ### Usage Statistics
-![Statistics](https://via.placeholder.com/800x400?text=Usage+Statistics+with+ApexCharts)
+![Statistics](<img width="1904" height="950" alt="6" src="https://github.com/user-attachments/assets/d7fdde93-6fa0-4eef-bfd9-e330037bd4e0" />)
 
 ### Customer Management
-![Customers](https://via.placeholder.com/800x400?text=Customer+Management)
+![Customers](<img width="1903" height="950" alt="3" src="https://github.com/user-attachments/assets/cca6aeff-33f8-4c7c-8327-5bbc519a0b46" />)
+![Customers](<img width="1903" height="950" alt="2" src="https://github.com/user-attachments/assets/4887bed6-1864-43ca-979d-900eb420ec30" />
+)
 
-### Network Interface Monitoring ⭐ *NEW*
-![Interfaces](https://via.placeholder.com/800x400?text=Network+Interface+Monitoring)
+### Payment ⭐ *NEW*
+![Payment](<img width="1904" height="950" alt="7" src="https://github.com/user-attachments/assets/b1dfc5f6-d81f-4e71-b835-ae31e215415d" />
+)
 
 ## 🎯 Key Features
 
