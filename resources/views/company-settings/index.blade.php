@@ -387,14 +387,6 @@
                     <h6 class="font-weight-bold">Payment Instructions:</h6>
                     
                     @php
-                        // Debug: Log settings values
-                        \Log::info('Settings in view:', [
-                            'show_bank_bca' => $settings['show_bank_bca'] ?? 'not set',
-                            'show_bank_mandiri' => $settings['show_bank_mandiri'] ?? 'not set',
-                            'show_ewallet_dana' => $settings['show_ewallet_dana'] ?? 'not set',
-                            'show_ewallet_ovo' => $settings['show_ewallet_ovo'] ?? 'not set',
-                        ]);
-                        
                         $hasBankTransfer = ($settings['show_bank_bca'] && $settings['bank_bca']) || 
                                           ($settings['show_bank_mandiri'] && $settings['bank_mandiri']) || 
                                           ($settings['show_bank_bni'] && $settings['bank_bni']) || 

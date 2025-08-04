@@ -50,19 +50,7 @@ class CompanySettingsController extends Controller
             'show_manual_payment' => 'nullable|boolean',
         ]);
 
-        // Debug: Log checkbox values
-        \Log::info('Checkbox values:', [
-            'show_bank_bca' => $request->input('show_bank_bca', false),
-            'show_bank_mandiri' => $request->input('show_bank_mandiri', false),
-            'show_bank_bni' => $request->input('show_bank_bni', false),
-            'show_bank_bri' => $request->input('show_bank_bri', false),
-            'show_ewallet_dana' => $request->input('show_ewallet_dana', false),
-            'show_ewallet_ovo' => $request->input('show_ewallet_ovo', false),
-            'show_ewallet_gopay' => $request->input('show_ewallet_gopay', false),
-            'show_ewallet_shopeepay' => $request->input('show_ewallet_shopeepay', false),
-            'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
-            'show_manual_payment' => $request->input('show_manual_payment', false),
-        ]);
+
 
         $settings = [
             'company_name' => $request->company_name,
@@ -99,8 +87,7 @@ class CompanySettingsController extends Controller
             'show_manual_payment' => $request->input('show_manual_payment', false),
         ];
 
-        // Debug: Log saved settings
-        \Log::info('Saved settings:', $settings);
+
         
         Storage::put('company_settings.json', json_encode($settings, JSON_PRETTY_PRINT));
 
@@ -146,6 +133,19 @@ class CompanySettingsController extends Controller
 
         if (Storage::exists('company_settings.json')) {
             $savedSettings = json_decode(Storage::get('company_settings.json'), true);
+            // Pastikan semua checkbox settings ada dalam saved settings
+            $checkboxFields = [
+                'show_bank_bca', 'show_bank_mandiri', 'show_bank_bni', 'show_bank_bri',
+                'show_ewallet_dana', 'show_ewallet_ovo', 'show_ewallet_gopay', 
+                'show_ewallet_shopeepay', 'show_ewallet_linkaja', 'show_manual_payment'
+            ];
+            
+            foreach ($checkboxFields as $field) {
+                if (!isset($savedSettings[$field])) {
+                    $savedSettings[$field] = false;
+                }
+            }
+            
             return array_merge($defaultSettings, $savedSettings);
         }
 
@@ -191,6 +191,19 @@ class CompanySettingsController extends Controller
 
         if (Storage::exists('company_settings.json')) {
             $savedSettings = json_decode(Storage::get('company_settings.json'), true);
+            // Pastikan semua checkbox settings ada dalam saved settings
+            $checkboxFields = [
+                'show_bank_bca', 'show_bank_mandiri', 'show_bank_bni', 'show_bank_bri',
+                'show_ewallet_dana', 'show_ewallet_ovo', 'show_ewallet_gopay', 
+                'show_ewallet_shopeepay', 'show_ewallet_linkaja', 'show_manual_payment'
+            ];
+            
+            foreach ($checkboxFields as $field) {
+                if (!isset($savedSettings[$field])) {
+                    $savedSettings[$field] = false;
+                }
+            }
+            
             return array_merge($defaultSettings, $savedSettings);
         }
 
