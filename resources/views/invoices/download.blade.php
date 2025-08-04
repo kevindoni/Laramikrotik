@@ -430,6 +430,11 @@
                 @endif
                 @endif
                 
+                @if(isset($companySettings['show_manual_payment']) && $companySettings['show_manual_payment'] && isset($companySettings['manual_payment_info']) && $companySettings['manual_payment_info'])
+                <p><strong>Informasi Pembayaran Manual:</strong></p>
+                <p><small>{{ $companySettings['manual_payment_info'] }}</small></p>
+                @endif
+                
                 @if(isset($companySettings['payment_note']) && $companySettings['payment_note'])
                 <p><strong>Note:</strong></p>
                 <p><small>{{ $companySettings['payment_note'] }}</small></p>

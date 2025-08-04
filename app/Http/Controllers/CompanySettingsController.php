@@ -32,6 +32,7 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => 'nullable|string|max:50',
             'ewallet_shopeepay' => 'nullable|string|max:50',
             'ewallet_linkaja' => 'nullable|string|max:50',
+            'manual_payment_info' => 'nullable|string|max:1000',
             'payment_note' => 'nullable|string|max:1000',
             'footer_note' => 'nullable|string|max:500',
             'developer_by' => 'nullable|string|max:255',
@@ -46,6 +47,7 @@ class CompanySettingsController extends Controller
             'show_ewallet_gopay' => 'nullable|boolean',
             'show_ewallet_shopeepay' => 'nullable|boolean',
             'show_ewallet_linkaja' => 'nullable|boolean',
+            'show_manual_payment' => 'nullable|boolean',
         ]);
 
         $settings = [
@@ -65,6 +67,7 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => $request->ewallet_gopay,
             'ewallet_shopeepay' => $request->ewallet_shopeepay,
             'ewallet_linkaja' => $request->ewallet_linkaja,
+            'manual_payment_info' => $request->manual_payment_info,
             'payment_note' => $request->payment_note,
             'footer_note' => $request->footer_note,
             'developer_by' => $request->developer_by,
@@ -79,6 +82,7 @@ class CompanySettingsController extends Controller
             'show_ewallet_gopay' => $request->has('show_ewallet_gopay'),
             'show_ewallet_shopeepay' => $request->has('show_ewallet_shopeepay'),
             'show_ewallet_linkaja' => $request->has('show_ewallet_linkaja'),
+            'show_manual_payment' => $request->has('show_manual_payment'),
         ];
 
         Storage::put('company_settings.json', json_encode($settings, JSON_PRETTY_PRINT));
@@ -105,6 +109,7 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => '0812-3456-7890',
             'ewallet_shopeepay' => '0812-3456-7890',
             'ewallet_linkaja' => '0812-3456-7890',
+            'manual_payment_info' => 'Please include invoice number in payment description',
             'payment_note' => 'Please include invoice number in payment description',
             'footer_note' => 'Thank you for your business! For any questions regarding this invoice, please contact us at billing@laranetworks.com',
             'developer_by' => 'Kevindoni',
@@ -119,6 +124,7 @@ class CompanySettingsController extends Controller
             'show_ewallet_gopay' => false,
             'show_ewallet_shopeepay' => false,
             'show_ewallet_linkaja' => false,
+            'show_manual_payment' => false,
         ];
 
         if (Storage::exists('company_settings.json')) {
@@ -148,6 +154,7 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => '0812-3456-7890',
             'ewallet_shopeepay' => '0812-3456-7890',
             'ewallet_linkaja' => '0812-3456-7890',
+            'manual_payment_info' => 'Please include invoice number in payment description',
             'payment_note' => 'Please include invoice number in payment description',
             'footer_note' => 'Thank you for your business! For any questions regarding this invoice, please contact us at billing@laranetworks.com',
             'developer_by' => 'Kevindoni',
@@ -162,6 +169,7 @@ class CompanySettingsController extends Controller
             'show_ewallet_gopay' => false,
             'show_ewallet_shopeepay' => false,
             'show_ewallet_linkaja' => false,
+            'show_manual_payment' => false,
         ];
 
         if (Storage::exists('company_settings.json')) {

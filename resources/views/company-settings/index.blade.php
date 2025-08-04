@@ -288,6 +288,34 @@
                             </div>
                         </div>
 
+                        <!-- Manual Payment Information -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="m-0 font-weight-bold text-primary">Informasi Pembayaran Manual</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="show_manual_payment" name="show_manual_payment" 
+                                               {{ $settings['show_manual_payment'] ? 'checked' : '' }}>
+                                        <label class="custom-control-label" for="show_manual_payment">
+                                            <strong>Aktifkan Informasi Pembayaran Manual</strong>
+                                        </label>
+                                    </div>
+                                    <textarea class="form-control @error('manual_payment_info') is-invalid @enderror" 
+                                              id="manual_payment_info" name="manual_payment_info" rows="4" 
+                                              placeholder="Masukkan informasi pembayaran manual jika tidak ada yang cocok atau tidak dimiliki...">{{ old('manual_payment_info', $settings['manual_payment_info']) }}</textarea>
+                                    <small class="form-text text-muted">
+                                        Gunakan opsi ini jika Anda memiliki metode pembayaran lain yang tidak tercantum di atas. 
+                                        Contoh: Transfer ke rekening lain, pembayaran tunai, atau metode pembayaran khusus lainnya.
+                                    </small>
+                                    @error('manual_payment_info')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="payment_note">Payment Note</label>
                             <textarea class="form-control @error('payment_note') is-invalid @enderror" 
@@ -407,6 +435,11 @@
                     @if($settings['show_ewallet_linkaja'] && $settings['ewallet_linkaja'])
                     <p class="mb-3">LinkAja: {{ $settings['ewallet_linkaja'] }}</p>
                     @endif
+                    @endif
+
+                    @if($settings['show_manual_payment'] && $settings['manual_payment_info'])
+                    <p class="mb-2"><strong>Informasi Pembayaran Manual:</strong></p>
+                    <p class="mb-3">{{ $settings['manual_payment_info'] }}</p>
                     @endif
 
                     @if($settings['payment_note'])
