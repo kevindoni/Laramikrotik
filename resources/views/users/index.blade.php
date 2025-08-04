@@ -268,8 +268,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-danger" 
-                                                    title="Delete"
-                                                    onclick="return confirm('Are you sure you want to delete this user?')">
+                                                    title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -298,3 +297,46 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // Delete user confirmation with SweetAlert
+    $('form[action*="/users/"][action*="/destroy"]').on('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        
+        Swal.fire({
+            title: '🗑️ Delete User?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">Are you sure you want to delete this user?</p>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> This action cannot be undone!
+                        <ul class="mb-0 mt-2">
+                            <li>User will be permanently removed</li>
+                            <li>All associated data will be deleted</li>
+                            <li>This cannot be reversed</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete!',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            customClass: {
+                confirmButton: 'btn btn-danger mx-2',
+                cancelButton: 'btn btn-secondary mx-2'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endpush

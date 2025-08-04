@@ -332,11 +332,11 @@
 @endsection
 
 @push('styles')
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" rel="stylesheet">
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
 

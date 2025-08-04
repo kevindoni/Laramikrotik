@@ -163,8 +163,7 @@
                         <a href="{{ route('usage-logs.edit', $usageLog) }}" class="btn btn-warning btn-sm">
                             <i class="fas fa-edit"></i> {{ __('Edit Usage Log') }}
                         </a>
-                        <form action="{{ route('usage-logs.destroy', $usageLog) }}" method="POST" 
-                              onsubmit="return confirm('{{ __('Are you sure you want to delete this usage log?') }}')">
+                        <form action="{{ route('usage-logs.destroy', $usageLog) }}" method="POST" class="delete-usage-log-form">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm w-100">
@@ -189,3 +188,46 @@
         return round($bytes, $precision) . ' ' . $units[$i];
     }
 @endphp
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // Delete usage log confirmation with SweetAlert
+    $('.delete-usage-log-form').on('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        
+        Swal.fire({
+            title: '🗑️ Delete Usage Log?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">Are you sure you want to delete this usage log?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>This usage log record will be permanently deleted</li>
+                            <li>Historical data will be lost</li>
+                            <li>This action cannot be undone</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete!',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            customClass: {
+                confirmButton: 'btn btn-danger mx-2',
+                cancelButton: 'btn btn-secondary mx-2'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endpush

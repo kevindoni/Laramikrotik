@@ -141,10 +141,9 @@
             <a href="{{ route('ppp-profiles.create') }}" class="btn btn-sm btn-primary shadow-sm mr-2">
                 <i class="fas fa-plus fa-sm text-white-50"></i> Add New Profile
             </a>
-            <form action="{{ route('ppp-profiles.sync-from-mikrotik') }}" method="POST" class="d-inline">
+            <form action="{{ route('ppp-profiles.sync-from-mikrotik') }}" method="POST" class="d-inline" id="syncFromMikrotikForm">
                 @csrf
-                <button type="submit" class="btn btn-sm btn-info shadow-sm"
-                        onclick="return confirm('📥 Download PPP Profiles from MikroTik?\n\n• Profiles will be updated in database\n• No existing data will be lost\n• Safe merge operation')">
+                <button type="button" class="btn btn-sm btn-info shadow-sm" id="syncFromMikrotikBtn">
                     <i class="fas fa-sync fa-sm text-white-50"></i> Sync from MikroTik
                 </button>
             </form>
@@ -499,10 +498,9 @@
                                         </button>
                                         <div class="dropdown-menu">
                                             <form action="{{ route('ppp-profiles.sync-to-mikrotik', $profile) }}" 
-                                                  method="POST" class="d-inline">
+                                                  method="POST" class="d-inline sync-to-mikrotik-form" data-profile-name="{{ $profile->name }}">
                                                 @csrf
-                                                <button type="submit" class="dropdown-item"
-                                                        onclick="return confirm('📤 Upload Profile to MikroTik?\n\n• This profile will be created/updated on router\n• Changes will be made directly to MikroTik')">
+                                                <button type="button" class="dropdown-item sync-to-mikrotik-btn">
                                                     <i class="fas fa-upload text-success"></i> Push to MikroTik
                                                 </button>
                                             </form>
@@ -834,6 +832,62 @@ $(document).ready(function() {
     // Refresh page functionality
     $('#refreshBtn').click(function() {
         location.reload();
+    });
+    
+    // SweetAlert for Sync from MikroTik
+    $('#syncFromMikrotikBtn').click(function(e) {
+        e.preventDefault();
+        
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '📥 Download PPP Profiles from MikroTik?',
+                html: '<div class="text-left"><ul class="mb-0"><li>Profiles will be updated in database</li><li>No existing data will be lost</li><li>Safe merge operation</li></ul></div>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#17a2b8',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-sync"></i> Yes, Download Profiles!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#syncFromMikrotikForm').submit();
+                }
+            });
+        } else {
+            // Fallback
+            if (confirm('📥 Download PPP Profiles from MikroTik?\n\n• Profiles will be updated in database\n• No existing data will be lost\n• Safe merge operation')) {
+                $('#syncFromMikrotikForm').submit();
+            }
+        }
+    });
+    
+    // SweetAlert for Sync to MikroTik (individual profiles)
+    $('.sync-to-mikrotik-btn').click(function(e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        const profileName = form.data('profile-name');
+        
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '📤 Upload Profile to MikroTik?',
+                html: `<div class="text-left"><p>Upload profile <strong>"${profileName}"</strong> to MikroTik router?</p><ul class="mb-0"><li>This profile will be created/updated on router</li><li>Changes will be made directly to MikroTik</li></ul></div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-upload"></i> Yes, Upload Profile!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        } else {
+            // Fallback
+            if (confirm('📤 Upload Profile to MikroTik?\n\n• This profile will be created/updated on router\n• Changes will be made directly to MikroTik')) {
+                form.submit();
+            }
+        }
     });
 });
 </script>

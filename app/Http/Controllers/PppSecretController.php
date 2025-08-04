@@ -789,8 +789,8 @@ class PppSecretController extends Controller
     public function syncFromMikrotik()
     {
         try {
-            // Test connection first
-            $this->mikrotikService->connect();
+            // Test connection first with retry logic
+            $this->mikrotikService->connectWithRetry(3);
             
             // Get PPP secrets from MikroTik with timeout and retry logic
             $mikrotikSecrets = $this->getMikrotikSecretsWithRetry();
@@ -965,48 +965,99 @@ class PppSecretController extends Controller
             try {
                 logger()->info("Attempting to get MikroTik secrets", ['attempt' => $attempt]);
                 
-                // Method 1: Try batch processing (recommended)
+                // Method 1: Try small chunk processing (most reliable for slow connections)
                 if ($attempt == 1) {
-                    return $this->mikrotikService->getAllPppSecrets(10);
-                }
-                
-                // Method 2: Try smaller batch
-                if ($attempt == 2) {
+                    logger()->info("Using small chunk approach (5 secrets at a time)");
                     return $this->mikrotikService->getAllPppSecrets(5);
                 }
                 
-                // Method 3: Direct query as last resort
+                // Method 2: Try minimal data retrieval 
+                if ($attempt == 2) {
+                    logger()->info("Using minimal data approach");
+                    return $this->mikrotikService->getAllPppSecrets(3); // Even smaller chunks
+                }
+                
+                // Method 3: Direct lightweight query as last resort
                 if ($attempt == 3) {
+                    logger()->info("Using direct lightweight query as last resort");
                     $this->mikrotikService->connect();
+                    
+                    // Set maximum timeout for last attempt
+                    $client = $this->mikrotikService->getClient();
+                    if ($client && method_exists($client, 'setTimeout')) {
+                        $client->setTimeout(300); // 5 minutes maximum
+                    }
+                    
                     $query = new \RouterOS\Query('/ppp/secret/print');
-                    $secrets = $this->mikrotikService->getClient()->query($query)->read();
+                    // Use minimal proplist to reduce data transfer
+                    $query->equal('proplist', 'name,password,profile,disabled,.id');
+                    
+                    $secrets = $client->query($query)->read();
                     
                     // Validate response
                     if (!is_array($secrets)) {
                         throw new Exception('Invalid response from MikroTik: expected array, got ' . gettype($secrets));
                     }
                     
+                    logger()->info('Direct query succeeded', ['count' => count($secrets)]);
                     return $secrets;
                 }
                 
             } catch (Exception $e) {
                 $lastException = $e;
-                logger()->warning("Attempt {$attempt} failed", ['error' => $e->getMessage()]);
+                logger()->warning("Attempt {$attempt} failed", [
+                    'error' => $e->getMessage(),
+                    'error_type' => get_class($e)
+                ]);
                 
-                // Wait before retry (except on last attempt)
+                // Check if this is a timeout error
+                $isTimeout = strpos($e->getMessage(), 'timeout') !== false || 
+                           strpos($e->getMessage(), 'Stream timed out') !== false;
+                
+                // Wait before retry (except on last attempt) with exponential backoff
                 if ($attempt < $maxAttempts) {
-                    sleep($attempt * 2); // 2s, 4s
-                    // Reconnect for next attempt
+                    $delay = $isTimeout ? ($attempt * $attempt * 3) : ($attempt * 2); // Longer delay for timeouts
+                    logger()->info("Waiting {$delay} seconds before next attempt", [
+                        'delay' => $delay,
+                        'is_timeout' => $isTimeout
+                    ]);
+                    sleep($delay);
+                    
+                    // Always reconnect for next attempt to ensure fresh connection
                     try {
                         $this->mikrotikService->connect();
+                        logger()->info("Reconnection successful for attempt " . ($attempt + 1));
                     } catch (Exception $connectException) {
-                        logger()->warning("Reconnection failed", ['error' => $connectException->getMessage()]);
+                        logger()->warning("Reconnection failed", [
+                            'error' => $connectException->getMessage(),
+                            'next_attempt' => $attempt + 1
+                        ]);
                     }
                 }
             }
         }
         
-        throw $lastException ?: new Exception('All sync attempts failed');
+        // Provide specific error message based on the type of failure
+        $errorMsg = $lastException ? $lastException->getMessage() : 'All sync attempts failed';
+        
+        if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'Stream timed out') !== false) {
+            throw new Exception(
+                "Failed to get PPP secrets: All attempts timed out. " .
+                "The MikroTik router appears to be very slow or overloaded. " .
+                "This could be due to:\n" .
+                "• High network latency or unstable tunnel connection\n" .
+                "• Router CPU/memory overload\n" .
+                "• Database performance issues on the router\n" .
+                "• Too many concurrent connections\n\n" .
+                "Recommendations:\n" .
+                "• Try again during off-peak hours\n" .
+                "• Check network connectivity to the router\n" .
+                "• Consider reducing the number of PPP secrets\n" .
+                "• Contact your network administrator"
+            );
+        }
+        
+        throw new Exception($errorMsg);
     }
 
     /**

@@ -145,14 +145,13 @@
                         </a>
                         
                         @if(!$user->email_verified_at)
-                            <button class="btn btn-info btn-sm" onclick="alert('{{ __('Email verification feature not implemented yet.') }}')">
+                            <button class="btn btn-info btn-sm" onclick="showEmailVerificationInfo()">
                                 <i class="fas fa-envelope-check"></i> {{ __('Send Verification Email') }}
                             </button>
                         @endif
                         
                         @if($user->id !== auth()->id())
-                            <form action="{{ route('users.destroy', $user) }}" method="POST" 
-                                  onsubmit="return confirm('{{ __('Are you sure you want to delete this user? This action cannot be undone.') }}')">
+                            <form action="{{ route('users.destroy', $user) }}" method="POST" class="delete-user-form">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-danger btn-sm w-100">
@@ -168,3 +167,64 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+function showEmailVerificationInfo() {
+    Swal.fire({
+        title: '📧 Email Verification',
+        html: `
+            <div class="text-left">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Feature Not Implemented</strong>
+                </div>
+                <p>Email verification functionality is not implemented yet.</p>
+                <p class="text-muted small">This feature will be available in a future update.</p>
+            </div>
+        `,
+        icon: 'info',
+        confirmButtonText: '<i class="fas fa-check"></i> Got it!',
+        customClass: {
+            confirmButton: 'btn btn-primary'
+        }
+    });
+}
+
+// Delete user with SweetAlert
+$('.delete-user-form').on('submit', function(e) {
+    e.preventDefault();
+    const form = this;
+    
+    Swal.fire({
+        title: '🗑️ Delete User?',
+        html: `
+            <div class="text-left">
+                <p class="mb-3">Are you sure you want to delete this user?</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> This action cannot be undone!
+                    <ul class="mb-0 mt-2">
+                        <li>All user data will be permanently deleted</li>
+                        <li>Associated records may be affected</li>
+                        <li>This cannot be reversed</li>
+                    </ul>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete User!',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+        customClass: {
+            confirmButton: 'btn btn-danger mx-2',
+            cancelButton: 'btn btn-secondary mx-2'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+});
+</script>
+@endpush

@@ -51,6 +51,14 @@ class MikrotikService
      */
     public function connect()
     {
+        return $this->connectWithRetry(1); // Single attempt for backward compatibility
+    }
+
+    /**
+     * Connect to the Mikrotik router with retry logic.
+     */
+    public function connectWithRetry($maxAttempts = 3)
+    {
         if (!$this->setting) {
             $this->loadActiveSetting();
         }
@@ -59,73 +67,105 @@ class MikrotikService
             throw new Exception('No active Mikrotik setting found.');
         }
 
-        try {
-            $port = $this->setting->port ?: ($this->setting->use_ssl ? 8729 : 8728);
-            
-            // For timeout-sensitive operations, use shorter initial timeout
-            $initialTimeout = 10; // Start with 10 seconds for quick operations
-            
-            $config = new Config([
-                'host' => $this->setting->host,
-                'user' => $this->setting->username,
-                'pass' => $this->setting->password,
-                'port' => (int) $port,
-                'timeout' => $initialTimeout,
-                'attempts' => 1,  // Single attempt to avoid auto-retry loops
-                'delay' => 1,     // Shorter delay for faster failure detection
-                'socket_timeout' => $initialTimeout,
-            ]);
+        $lastException = null;
 
-            if ($this->setting->use_ssl) {
-                $config->set('ssl', true);
-                $config->set('ssl_options', [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $port = $this->setting->port ?: ($this->setting->use_ssl ? 8729 : 8728);
+                
+                // Progressive timeout: start short, increase with retries
+                $initialTimeout = 10 + ($attempt - 1) * 5; // 10s, 15s, 20s
+                
+                $config = new Config([
+                    'host' => $this->setting->host,
+                    'user' => $this->setting->username,
+                    'pass' => $this->setting->password,
+                    'port' => (int) $port,
+                    'timeout' => $initialTimeout,
+                    'attempts' => 1,  // Single attempt to avoid auto-retry loops
+                    'delay' => 1,     // Shorter delay for faster failure detection
+                    'socket_timeout' => $initialTimeout,
                 ]);
+
+                if ($this->setting->use_ssl) {
+                    $config->set('ssl', true);
+                    $config->set('ssl_options', [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true,
+                    ]);
+                }
+
+                logger()->info('Attempting to connect to MikroTik router', [
+                    'host' => $this->setting->host,
+                    'port' => $port,
+                    'ssl' => $this->setting->use_ssl,
+                    'timeout' => $initialTimeout,
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts
+                ]);
+
+                $startTime = microtime(true);
+                $this->client = new Client($config);
+                $connectionTime = microtime(true) - $startTime;
+
+                logger()->info('Successfully connected to MikroTik router', [
+                    'connection_time_ms' => round($connectionTime * 1000, 2),
+                    'host' => $this->setting->host,
+                    'attempt' => $attempt
+                ]);
+
+                $this->isConnected = true;
+                return $this;
+                
+            } catch (Exception $e) {
+                $lastException = $e;
+                $errorMsg = $e->getMessage();
+                $connectionTime = isset($startTime) ? microtime(true) - $startTime : 0;
+                
+                logger()->error('Failed to connect to MikroTik router', [
+                    'error' => $errorMsg,
+                    'host' => $this->setting->host,
+                    'port' => $port,
+                    'connection_time_ms' => round($connectionTime * 1000, 2),
+                    'error_type' => $this->getConnectionErrorType($errorMsg),
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts
+                ]);
+
+                // If not the last attempt, wait before retrying for timeout/network errors
+                if ($attempt < $maxAttempts) {
+                    $errorType = $this->getConnectionErrorType($errorMsg);
+                    
+                    if (in_array($errorType, ['timeout', 'network_unreachable', 'unknown'])) {
+                        $delay = $attempt * 2; // 2s, 4s
+                        logger()->info("Connection failed, retrying in {$delay} seconds", [
+                            'delay' => $delay,
+                            'next_attempt' => $attempt + 1,
+                            'error_type' => $errorType
+                        ]);
+                        sleep($delay);
+                        continue;
+                    } else {
+                        // For auth errors and connection refused, don't retry
+                        break;
+                    }
+                }
             }
+        }
 
-            logger()->info('Attempting to connect to MikroTik router', [
-                'host' => $this->setting->host,
-                'port' => $port,
-                'ssl' => $this->setting->use_ssl,
-                'timeout' => $initialTimeout
-            ]);
-
-            $startTime = microtime(true);
-            $this->client = new Client($config);
-            $connectionTime = microtime(true) - $startTime;
-
-            logger()->info('Successfully connected to MikroTik router', [
-                'connection_time_ms' => round($connectionTime * 1000, 2),
-                'host' => $this->setting->host
-            ]);
-
-            $this->isConnected = true;
-            return $this;
-            
-        } catch (Exception $e) {
-            $errorMsg = $e->getMessage();
-            $connectionTime = isset($startTime) ? microtime(true) - $startTime : 0;
-            
-            logger()->error('Failed to connect to MikroTik router', [
-                'error' => $errorMsg,
-                'host' => $this->setting->host,
-                'port' => $port,
-                'connection_time_ms' => round($connectionTime * 1000, 2),
-                'error_type' => $this->getConnectionErrorType($errorMsg)
-            ]);
-
-            // Provide more specific error messages
-            if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'timed out') !== false) {
-                throw new Exception('Connection timeout - router may be overloaded or network connection is slow');
-            } elseif (strpos($errorMsg, 'Connection refused') !== false) {
-                throw new Exception('Connection refused - check if API service is enabled on router');
-            } elseif (strpos($errorMsg, 'cannot connect') !== false) {
-                throw new Exception('Cannot connect to router - check IP address and network connectivity');
-            } else {
-                throw new Exception('Connection failed: ' . $errorMsg);
-            }
+        // All attempts failed or non-retryable error
+        $errorMsg = $lastException ? $lastException->getMessage() : 'Unknown connection error';
+        
+        // Provide more specific error messages
+        if (strpos($errorMsg, 'timeout') !== false || strpos($errorMsg, 'timed out') !== false) {
+            throw new Exception("Connection timeout after {$maxAttempts} attempts - router may be overloaded or network connection is very slow");
+        } elseif (strpos($errorMsg, 'Connection refused') !== false) {
+            throw new Exception('Connection refused - check if API service is enabled on router');
+        } elseif (strpos($errorMsg, 'cannot connect') !== false) {
+            throw new Exception('Cannot connect to router - check IP address and network connectivity');
+        } else {
+            throw new Exception("Connection failed after {$maxAttempts} attempts: " . $errorMsg);
         }
     }
     
@@ -484,12 +524,12 @@ class MikrotikService
     }
 
     /**
-     * Get all PPP secrets with batch processing for better reliability
+     * Get all PPP secrets from MikroTik with enhanced timeout handling and optional chunking.
+     * 
+     * @param int|null $chunkSize If provided, attempts to retrieve secrets in smaller chunks for better reliability
+     * @return array
      */
-    /**
-     * Get all PPP secrets from MikroTik with enhanced timeout handling.
-     */
-    public function getAllPppSecrets()
+    public function getAllPppSecrets($chunkSize = null)
     {
         // Ensure we're connected first
         if (!$this->isConnected()) {
@@ -542,17 +582,15 @@ class MikrotikService
                     return [];
                 }
                 
-                // If there are too many secrets, warn about potential timeout
-                if ($secretCount > 50) {
-                    logger()->warning('Large number of PPP secrets detected', [
-                        'count' => $secretCount,
-                        'recommendation' => 'Consider implementing pagination'
-                    ]);
-                }
+                // Calculate progressive timeout based on attempt and secret count
+                $baseTimeout = 30; // Start with 30 seconds
+                $timeoutMultiplier = $attempt; // Increase timeout with each attempt
+                $countMultiplier = max(1, ceil($secretCount / 10)); // Add time for every 10 secrets
+                $timeout = $baseTimeout * $timeoutMultiplier * $countMultiplier;
+                $timeout = min($timeout, 300); // Cap at 5 minutes maximum
                 
-                // Set a longer timeout for data retrieval operations
+                // Set progressive timeout for data retrieval operations
                 if ($this->client && method_exists($this->client, 'setTimeout')) {
-                    $timeout = $secretCount > 20 ? 180 : 60; // Longer timeout for many secrets
                     $this->client->setTimeout($timeout);
                 }
                 
@@ -560,13 +598,25 @@ class MikrotikService
                     'attempt' => $attempt,
                     'count' => $secretCount,
                     'host' => $this->setting->host ?? 'unknown',
-                    'timeout' => $timeout ?? 60
+                    'timeout' => $timeout,
+                    'chunk_size' => $chunkSize
                 ]);
                 
-                // Try simple query without proplist first
-                $query = new Query('/ppp/secret/print');
+                // If chunking is requested and we have many secrets, try chunked approach
+                if ($chunkSize && $secretCount > $chunkSize) {
+                    logger()->info('Using chunked retrieval approach', [
+                        'total_secrets' => $secretCount,
+                        'chunk_size' => $chunkSize
+                    ]);
+                    
+                    return $this->getSecretsInChunks($chunkSize, $secretCount, $timeout);
+                }
                 
+                // Try optimized query with minimal data first for faster response
                 try {
+                    $query = new Query('/ppp/secret/print');
+                    $query->equal('proplist', 'name,password,profile,service,comment,disabled,.id');
+                    
                     $secrets = $this->client->query($query)->read();
                     
                     // Log successful retrieval for debugging
@@ -574,37 +624,36 @@ class MikrotikService
                         'count' => count($secrets),
                         'host' => $this->setting->host ?? 'unknown',
                         'attempt' => $attempt,
-                        'method' => 'simple'
+                        'method' => 'optimized_proplist'
                     ]);
                     
                     return $secrets;
                     
                 } catch (Exception $e) {
-                    // If simple query fails, it might be a timeout issue
+                    // If optimized query fails, try minimal proplist
                     if (strpos($e->getMessage(), 'timeout') !== false || 
                         strpos($e->getMessage(), 'Stream timed out') !== false) {
-                        throw $e; // Re-throw timeout errors to trigger retry logic
+                        
+                        logger()->info('Optimized query timed out, trying minimal data approach', [
+                            'error' => $e->getMessage(),
+                            'attempt' => $attempt
+                        ]);
+                        
+                        $query2 = new Query('/ppp/secret/print');
+                        $query2->equal('proplist', 'name,password,profile,disabled,.id');
+                        $secrets = $this->client->query($query2)->read();
+                        
+                        logger()->info('Successfully retrieved PPP secrets with minimal data', [
+                            'count' => count($secrets),
+                            'host' => $this->setting->host ?? 'unknown',
+                            'attempt' => $attempt,
+                            'method' => 'minimal_proplist'
+                        ]);
+                        
+                        return $secrets;
+                    } else {
+                        throw $e; // Re-throw non-timeout errors
                     }
-                    
-                    // For other errors, try with proplist to reduce data
-                    logger()->info('Simple query failed, trying with proplist', [
-                        'error' => $e->getMessage(),
-                        'attempt' => $attempt
-                    ]);
-                    
-                    $query2 = new Query('/ppp/secret/print');
-                    $query2->equal('proplist', 'name,password,profile,service,comment,disabled');
-                    $secrets = $this->client->query($query2)->read();
-                    
-                    // Log successful retrieval for debugging
-                    logger()->info('Successfully retrieved PPP secrets from MikroTik', [
-                        'count' => count($secrets),
-                        'host' => $this->setting->host ?? 'unknown',
-                        'attempt' => $attempt,
-                        'method' => 'proplist'
-                    ]);
-                    
-                    return $secrets;
                 }
                 
             } catch (Exception $e) {
@@ -632,7 +681,9 @@ class MikrotikService
                     $this->client = null;
                     
                     if ($attempt < $maxAttempts) {
-                        sleep($attempt * 3); // Progressive delay: 3s, 6s
+                        $delay = $attempt * $attempt * 2; // Exponential backoff: 2s, 8s, 18s
+                        logger()->info("Waiting {$delay} seconds before retry", ['delay' => $delay]);
+                        sleep($delay);
                         continue;
                     }
                 }
@@ -652,6 +703,81 @@ class MikrotikService
         }
         
         throw new Exception('Failed to get PPP secrets: ' . $errorMsg);
+    }
+    
+    /**
+     * Retrieve secrets in small chunks for better reliability on slow connections.
+     */
+    private function getSecretsInChunks($chunkSize, $totalCount, $timeout)
+    {
+        $allSecrets = [];
+        $processed = 0;
+        
+        logger()->info('Starting chunked secret retrieval', [
+            'chunk_size' => $chunkSize,
+            'total_count' => $totalCount,
+            'timeout' => $timeout
+        ]);
+        
+        while ($processed < $totalCount) {
+            try {
+                // Set shorter timeout for each chunk
+                $chunkTimeout = min($timeout, 60); // Max 60 seconds per chunk
+                if ($this->client && method_exists($this->client, 'setTimeout')) {
+                    $this->client->setTimeout($chunkTimeout);
+                }
+                
+                // Get minimal data for this chunk
+                $query = new Query('/ppp/secret/print');
+                $query->equal('proplist', 'name,password,profile,disabled,.id');
+                
+                // Note: RouterOS doesn't support LIMIT/OFFSET for /ppp/secret/print
+                // So we get all and handle chunking in PHP
+                $secrets = $this->client->query($query)->read();
+                
+                // Slice the array to get our chunk
+                $chunk = array_slice($secrets, $processed, $chunkSize);
+                
+                if (empty($chunk)) {
+                    break; // No more data
+                }
+                
+                $allSecrets = array_merge($allSecrets, $chunk);
+                $processed += count($chunk);
+                
+                logger()->info('Chunk processed', [
+                    'chunk_secrets' => count($chunk),
+                    'total_processed' => $processed,
+                    'remaining' => max(0, $totalCount - $processed)
+                ]);
+                
+                // If we got all secrets in this single query, use the complete result
+                if (count($secrets) == $totalCount) {
+                    $allSecrets = $secrets; // Use the complete result
+                    break;
+                }
+                
+                // Small delay between chunks to avoid overwhelming the router
+                if ($processed < $totalCount) {
+                    usleep(500000); // 0.5 second delay
+                }
+                
+            } catch (Exception $e) {
+                logger()->error('Chunk retrieval failed', [
+                    'processed' => $processed,
+                    'chunk_size' => $chunkSize,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
+        }
+        
+        logger()->info('Chunked retrieval completed', [
+            'total_retrieved' => count($allSecrets),
+            'expected' => $totalCount
+        ]);
+        
+        return $allSecrets;
     }
     /**
      * Create a PPP profile on Mikrotik.

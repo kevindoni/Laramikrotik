@@ -297,9 +297,8 @@
                                         <form action="{{ route('ppp-secrets.disconnect', $log->pppSecret) }}" 
                                               method="POST" class="d-inline">
                                             @csrf
-                                            <button type="submit" class="btn btn-sm btn-warning" 
-                                                    title="Disconnect Session"
-                                                    onclick="return confirm('Disconnect this active session?')">
+                                            <button type="submit" class="btn btn-sm btn-warning disconnect-session-btn" 
+                                                    title="Disconnect Session">
                                                 <i class="fas fa-plug"></i>
                                             </button>
                                         </form>
@@ -324,3 +323,48 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // Disconnect session confirmation with SweetAlert
+    $('form').on('submit', function(e) {
+        if ($(this).find('.disconnect-session-btn').length > 0) {
+            e.preventDefault();
+            const form = this;
+            
+            Swal.fire({
+                title: '🔌 Disconnect Session?',
+                html: `
+                    <div class="text-left">
+                        <p class="mb-3">Are you sure you want to disconnect this active session?</p>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Note:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>User will be immediately disconnected</li>
+                                <li>They can reconnect if their account is active</li>
+                                <li>Current session data will be lost</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-plug"></i> Yes, Disconnect!',
+                cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+                customClass: {
+                    confirmButton: 'btn btn-warning mx-2',
+                    cancelButton: 'btn btn-secondary mx-2'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        }
+    });
+});
+</script>
+@endpush

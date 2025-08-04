@@ -400,30 +400,83 @@
 @push('scripts')
 <script>
 function blockUser(userId, username) {
-    if (confirm(`Are you sure you want to block user "${username}"? This will change their profile to "Blokir" and disconnect their session.`)) {
-        // Create form and submit
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/alerts/block/${userId}`;
-        
-        // Add CSRF token
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
-        form.appendChild(csrfToken);
-        
-        document.body.appendChild(form);
-        form.submit();
-    }
+    Swal.fire({
+        title: '🚫 Block User?',
+        html: `
+            <div class="text-left">
+                <p class="mb-3">Are you sure you want to block user <strong>"${username}"</strong>?</p>
+                <div class="alert alert-warning">
+                    <strong>This will:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Change their profile to "Blokir"</li>
+                        <li>Disconnect their current session</li>
+                        <li>Prevent further connections</li>
+                    </ul>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-ban"></i> Yes, Block User!',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+        customClass: {
+            confirmButton: 'btn btn-danger mx-2',
+            cancelButton: 'btn btn-secondary mx-2'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/alerts/block/${userId}`;
+            
+            // Add CSRF token
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            form.appendChild(csrfToken);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
 }
 
 function unblockUser(userId, username) {
-    if (confirm(`Are you sure you want to unblock user "${username}"? This will restore their default profile.`)) {
-        // Create form and submit
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/alerts/unblock/${userId}`;
+    Swal.fire({
+        title: '✅ Unblock User?',
+        html: `
+            <div class="text-left">
+                <p class="mb-3">Are you sure you want to unblock user <strong>"${username}"</strong>?</p>
+                <div class="alert alert-success">
+                    <strong>This will:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Restore their default profile</li>
+                        <li>Allow them to connect again</li>
+                        <li>Remove blocking restrictions</li>
+                    </ul>
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-check"></i> Yes, Unblock User!',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+        customClass: {
+            confirmButton: 'btn btn-success mx-2',
+            cancelButton: 'btn btn-secondary mx-2'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/alerts/unblock/${userId}`;
         
         // Add CSRF token
         const csrfToken = document.createElement('input');

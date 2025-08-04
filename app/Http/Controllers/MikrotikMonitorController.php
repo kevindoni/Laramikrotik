@@ -583,6 +583,17 @@ class MikrotikMonitorController extends Controller
      */
     public function pingTest(Request $request)
     {
+        // Initialize MikroTik service using existing method
+        if (!$this->initializeMikrotikService()) {
+            if ($request->isMethod('post')) {
+                return response()->json([
+                    'success' => false, 
+                    'error' => 'MikroTik service unavailable'
+                ]);
+            }
+            return view('mikrotik.ping-test')->with('error', 'MikroTik service unavailable');
+        }
+
         if ($request->isMethod('post')) {
             $host = $request->input('host');
             $count = $request->input('count', 4);
@@ -591,6 +602,11 @@ class MikrotikMonitorController extends Controller
                 $pingResults = $this->mikrotikService->pingTest($host, $count);
                 return response()->json(['success' => true, 'results' => $pingResults]);
             } catch (\Exception $e) {
+                Log::error('Ping test failed', [
+                    'host' => $host,
+                    'count' => $count,
+                    'error' => $e->getMessage()
+                ]);
                 return response()->json(['success' => false, 'error' => $e->getMessage()]);
             }
         }

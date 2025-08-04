@@ -23,14 +23,6 @@
     border-color: #007bff;
 }
 
-.copy-btn {
-    transition: all 0.2s ease-in-out;
-}
-
-.copy-btn:hover {
-    transform: scale(1.1);
-}
-
 .btn-group .btn {
     border-radius: 0.25rem;
     margin-left: 2px;
@@ -150,13 +142,9 @@
             <a href="{{ route('ppp-secrets.active-connections') }}" class="btn btn-sm btn-info shadow-sm mr-2">
                 <i class="fas fa-wifi fa-sm text-white-50"></i> Active Connections
             </a>
-            <form action="{{ route('ppp-secrets.sync-from-mikrotik') }}" method="POST" class="d-inline">
-                @csrf
-                <button type="submit" class="btn btn-sm btn-success shadow-sm"
-                        onclick="return confirm('📥 Sync PPP Secrets from MikroTik?\n\n✅ This will:\n• Download PPP secrets from router\n• Update existing secrets in database\n• Create new secrets if not found\n• Auto-create profiles if missing\n• Safe merge - no data loss\n\n⏱️ This may take a few moments...')">
-                    <i class="fas fa-sync fa-sm text-white-50"></i> Sync from MikroTik
-                </button>
-            </form>
+            <button type="button" class="btn btn-sm btn-success shadow-sm" id="syncFromMikrotikBtn">
+                <i class="fas fa-sync fa-sm text-white-50"></i> Sync from MikroTik
+            </button>
         </div>
     </div>
 
@@ -248,7 +236,9 @@
                 </div>
             </form>
         </div>
-    </div>    <!-- Summary Cards -->
+    </div>
+
+    <!-- Summary Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
@@ -339,294 +329,133 @@
             </div>
         </div>
         <div class="card-body">
-            <!-- Bulk Actions (Hidden by default) -->
-            <div id="bulkActions" class="mb-3 d-none align-items-center">
-                <div class="alert alert-info mb-0 mr-3 flex-grow-1">
-                    <i class="fas fa-info-circle"></i>
-                    <span id="selectedCount">0</span> secret(s) selected
-                </div>
-                <button type="button" id="bulkDeleteBtn" class="btn btn-danger btn-sm mr-2">
-                    <i class="fas fa-trash"></i> Delete Selected
-                </button>
-                <button type="button" id="bulkEnableBtn" class="btn btn-success btn-sm mr-2">
-                    <i class="fas fa-check"></i> Enable Selected
-                </button>
-                <button type="button" id="bulkDisableBtn" class="btn btn-warning btn-sm mr-2">
-                    <i class="fas fa-ban"></i> Disable Selected
-                </button>
-                <button type="button" id="bulkSyncBtn" class="btn btn-info btn-sm mr-2">
-                    <i class="fas fa-sync"></i> Sync Selected
-                </button>
-                <button type="button" id="clearSelectionBtn" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-times"></i> Clear
-                </button>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="secretsTable" width="100%" cellspacing="0">
-                    <thead class="thead-light">
-                        <tr>
-                            <th width="30">
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input" id="selectAll">
-                                    <label class="custom-control-label" for="selectAll"></label>
-                                </div>
-                            </th>
-                            <th>Username</th>
-                            <th>Customer</th>
-                            <th>Profile</th>
-                            <th>Service</th>
-                            <th>Status</th>
-                            <th width="200">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($pppSecrets as $secret)
-                        <tr>
-                            <td>
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input" 
-                                           id="secret_{{ $secret->id }}" 
-                                           name="selected_secrets[]" 
-                                           value="{{ $secret->id }}">
-                                    <label class="custom-control-label" for="secret_{{ $secret->id }}"></label>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div>
+            @if($pppSecrets->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th width="40"><input type="checkbox" id="selectAll"></th>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Service</th>
+                                <th>Profile</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                                <th>MikroTik</th>
+                                <th width="200" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pppSecrets as $secret)
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="secret-checkbox" value="{{ $secret->id }}">
+                                    </td>
+                                    <td>
                                         <strong>{{ $secret->username }}</strong>
-                                        <button class="btn btn-link btn-sm p-0 ml-2 copy-btn" 
-                                                data-copy="{{ $secret->username }}" 
-                                                title="Copy username">
-                                            <i class="fas fa-copy text-muted"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="mt-1">
-                                    @if($secret->mikrotik_id)
-                                        <span class="badge badge-info badge-sm">
-                                            <i class="fas fa-wifi"></i> Synced
-                                        </span>
-                                    @else
-                                        <span class="badge badge-warning badge-sm">
-                                            <i class="fas fa-exclamation-triangle"></i> Local Only
-                                        </span>
-                                    @endif
-                                    
-                                    @if($secret->auto_sync)
-                                        <span class="badge badge-success badge-sm">
-                                            <i class="fas fa-sync-alt"></i> Auto-Sync
-                                        </span>
-                                    @endif
-                                </div>
-                                @if($secret->comment)
-                                    <div class="mt-1">
-                                        <small class="text-muted">{{ $secret->comment }}</small>
-                                    </div>
-                                @endif
-                            </td>
-                            <td>
-                                @if($secret->customer)
-                                    <div class="mb-1">
-                                        <a href="{{ route('customers.show', $secret->customer) }}" class="text-decoration-none">
+                                        @if($secret->comment)
+                                            <br><small class="text-muted">{{ $secret->comment }}</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <code class="text-monospace">{{ Str::mask($secret->password, '*', 1, -1) }}</code>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ strtoupper($secret->service) }}</span>
+                                    </td>
+                                    <td>
+                                        @if($secret->pppProfile)
+                                            <span class="badge badge-primary">{{ $secret->pppProfile->name }}</span>
+                                        @else
+                                            <span class="badge badge-secondary">{{ $secret->profile ?? 'N/A' }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($secret->customer)
                                             <strong>{{ $secret->customer->name }}</strong>
-                                        </a>
-                                    </div>
-                                    @if($secret->customer->phone)
-                                        <div>
-                                            <small class="text-muted">
-                                                <i class="fas fa-phone"></i> {{ $secret->customer->phone }}
-                                            </small>
-                                        </div>
-                                    @endif
-                                @else
-                                    <span class="text-muted">
-                                        <i class="fas fa-user-slash"></i> No customer
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($secret->pppProfile)
-                                    <div class="mb-1">
-                                        <span class="badge badge-primary badge-lg">{{ $secret->pppProfile->name }}</span>
-                                    </div>
-                                    @if($secret->pppProfile->rate_limit)
-                                        @php
-                                            $rates = explode('/', $secret->pppProfile->rate_limit);
-                                            $download = $rates[0] ?? '';
-                                            $upload = $rates[1] ?? '';
-                                        @endphp
-                                        <div class="mt-1">
-                                            <small class="text-muted">
-                                                <span class="badge badge-outline-primary badge-sm">
-                                                    <i class="fas fa-download"></i> {{ $download }}
-                                                </span>
-                                                <span class="badge badge-outline-success badge-sm">
-                                                    <i class="fas fa-upload"></i> {{ $upload }}
-                                                </span>
-                                            </small>
-                                        </div>
-                                    @else
-                                        <div class="mt-1">
-                                            <small class="text-muted">
-                                                <span class="badge badge-secondary badge-sm">Unlimited</span>
-                                            </small>
-                                        </div>
-                                    @endif
-                                @else
-                                    <span class="text-muted">
-                                        <i class="fas fa-cog-slash"></i> No profile
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <span class="badge badge-{{ $secret->service == 'pppoe' ? 'success' : 'info' }} badge-lg">
-                                    @if($secret->service == 'pppoe')
-                                        <i class="fas fa-ethernet"></i>
-                                    @elseif($secret->service == 'pptp')
-                                        <i class="fas fa-lock"></i>
-                                    @elseif($secret->service == 'l2tp')
-                                        <i class="fas fa-shield-alt"></i>
-                                    @else
-                                        <i class="fas fa-network-wired"></i>
-                                    @endif
-                                    {{ strtoupper($secret->service) }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                @if($secret->is_active)
-                                    <span class="badge badge-success badge-lg">
-                                        <i class="fas fa-check-circle"></i> Active
-                                    </span>
-                                @else
-                                    <span class="badge badge-danger badge-lg">
-                                        <i class="fas fa-times-circle"></i> Disabled
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('ppp-secrets.show', $secret) }}" 
-                                       class="btn btn-sm btn-info" 
-                                       title="View Secret"
-                                       data-toggle="tooltip">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{{ route('ppp-secrets.edit', $secret) }}" 
-                                       class="btn btn-sm btn-warning" 
-                                       title="Edit Secret"
-                                       data-toggle="tooltip">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    
-                                    <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" 
-                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                                                title="Actions"
-                                                data-toggle="tooltip">
-                                            <i class="fas fa-cog"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <!-- Enable/Disable -->
-                                            @if($secret->is_active)
-                                                <form action="{{ route('ppp-secrets.disable', $secret) }}" 
-                                                      method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="dropdown-item" 
-                                                            onclick="return confirm('Disable this PPP secret?')">
-                                                        <i class="fas fa-ban text-danger"></i> Disable (Isolir)
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <form action="{{ route('ppp-secrets.enable', $secret) }}" 
-                                                      method="POST" class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="dropdown-item" 
-                                                            onclick="return confirm('Enable this PPP secret?')">
-                                                        <i class="fas fa-check text-success"></i> Enable
-                                                    </button>
-                                                </form>
+                                            @if($secret->customer->email)
+                                                <br><small class="text-muted">{{ $secret->customer->email }}</small>
                                             @endif
-                                            
-                                            <!-- Disconnect -->
-                                            <form action="{{ route('ppp-secrets.disconnect', $secret) }}" 
-                                                  method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="dropdown-item" 
-                                                        onclick="return confirm('Disconnect active session?')">
-                                                    <i class="fas fa-plug text-warning"></i> Disconnect Session
-                                                </button>
-                                            </form>
-                                            
-                                            <div class="dropdown-divider"></div>
-                                            
-                                            <!-- Sync -->
-                                            <form action="{{ route('ppp-secrets.sync-to-mikrotik', $secret) }}" 
-                                                  method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="dropdown-item"
-                                                        onclick="return confirm('📤 Upload User Account to MikroTik?\n\n• This user will be created/updated on router\n• Changes will be made directly to MikroTik')">
-                                                    <i class="fas fa-upload text-success"></i> Push to MikroTik
-                                                </button>
-                                            </form>
-                                            
-                                            <!-- Auto-sync toggle -->
-                                            <form action="{{ route('mikrotik-settings.toggle-secret-auto-sync', $secret->id) }}" 
-                                                  method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="dropdown-item">
-                                                    @if($secret->auto_sync)
-                                                        <i class="fas fa-pause text-warning"></i> Disable Auto-Sync
-                                                    @else
-                                                        <i class="fas fa-play text-success"></i> Enable Auto-Sync
-                                                    @endif
-                                                </button>
-                                            </form>
-                                            
-                                            <div class="dropdown-divider"></div>
-                                            
-                                            <!-- Delete -->
-                                            <form action="{{ route('ppp-secrets.destroy', $secret) }}" 
-                                                  method="POST" class="d-inline delete-form">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="dropdown-item text-danger" 
-                                                        title="Delete Secret"
-                                                        data-toggle="tooltip">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </form>
+                                        @else
+                                            <span class="text-muted">No Customer</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($secret->is_active)
+                                            <span class="badge badge-success">Active</span>
+                                        @else
+                                            <span class="badge badge-danger">Disabled</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($secret->mikrotik_id)
+                                            <span class="badge badge-success" title="Synced with MikroTik">
+                                                <i class="fas fa-wifi"></i> Synced
+                                            </span>
+                                        @else
+                                            <span class="badge badge-warning" title="Not synced">
+                                                <i class="fas fa-exclamation-triangle"></i> Local
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('ppp-secrets.show', $secret) }}" 
+                                               class="btn btn-sm btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('ppp-secrets.edit', $secret) }}" 
+                                               class="btn btn-sm btn-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="deleteSecret({{ $secret->id }})" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="text-muted">
-                                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                                    <p class="mb-0">No PPP secrets found.</p>
-                                    <small>Create your first secret or sync from MikroTik.</small>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="d-flex justify-content-between align-items-center mt-3">
-                <div class="text-muted">
-                    Showing {{ $pppSecrets->firstItem() ?? 0 }} to {{ $pppSecrets->lastItem() ?? 0 }} 
-                    of {{ $pppSecrets->total() }} secrets
+                                        <div class="btn-group mt-1" role="group">
+                                            @if($secret->is_active)
+                                                <button type="button" class="btn btn-sm btn-secondary" 
+                                                        onclick="disableSecret({{ $secret->id }})" title="Disable">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-success" 
+                                                        onclick="enableSecret({{ $secret->id }})" title="Enable">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            @endif
+                                            <button type="button" class="btn btn-sm btn-primary" 
+                                                    onclick="syncSecret({{ $secret->id }})" title="Sync to MikroTik">
+                                                <i class="fas fa-sync"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-                <div>
-                    {{ $pppSecrets->withQueryString()->links() }}
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        Showing {{ $pppSecrets->firstItem() }} to {{ $pppSecrets->lastItem() }} of {{ $pppSecrets->total() }} results
+                    </div>
+                    <div>
+                        {{ $pppSecrets->links() }}
+                    </div>
                 </div>
-            </div>
+            @else
+                <div class="text-center py-5">
+                    <i class="fas fa-key fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No PPP Secrets Found</h5>
+                    <p class="text-muted">Try syncing from MikroTik or add a new secret.</p>
+                    <button type="button" class="btn btn-success" id="syncFromMikrotikBtn2">
+                        <i class="fas fa-sync"></i> Sync from MikroTik
+                    </button>
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -634,423 +463,242 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Initialize tooltips
-    $('[data-toggle="tooltip"]').tooltip();
-
-    // Show/hide bulk actions based on checkbox selection
-    function toggleBulkActions() {
-        const checkedBoxes = $('input[name="selected_secrets[]"]:checked');
-        const count = checkedBoxes.length;
-        
-        if (count > 0) {
-            $('#bulkActions').removeClass('d-none').addClass('d-flex');
-            $('#selectedCount').text(count);
-        } else {
-            $('#bulkActions').addClass('d-none').removeClass('d-flex');
-        }
-    }
-
-    // Handle select all checkbox
-    $('#selectAll').change(function() {
-        $('input[name="selected_secrets[]"]').prop('checked', this.checked);
-        toggleBulkActions();
-    });
-
-    // Handle individual checkboxes
-    $(document).on('change', 'input[name="selected_secrets[]"]', function() {
-        toggleBulkActions();
-        // Update select all checkbox state
-        const total = $('input[name="selected_secrets[]"]').length;
-        const checked = $('input[name="selected_secrets[]"]:checked').length;
-        $('#selectAll').prop('indeterminate', checked > 0 && checked < total);
-        $('#selectAll').prop('checked', checked === total);
-    });
-
-    // Clear selection
-    $('#clearSelectionBtn').click(function() {
-        $('input[name="selected_secrets[]"], #selectAll').prop('checked', false);
-        toggleBulkActions();
-    });
-
-    // Generic bulk action function
-    function bulkAction(actionUrl, title, verb) {
-        const selectedIds = [];
-        $('input[name="selected_secrets[]"]:checked').each(function() {
-            selectedIds.push($(this).val());
-        });
-
-        if (selectedIds.length === 0) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Selection',
-                    text: `Please select secrets to ${verb}.`,
-                    confirmButtonClass: 'btn btn-primary'
-                });
-            } else {
-                alert(`Please select secrets to ${verb}.`);
-            }
-            return;
-        }
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: title,
-                text: `You are about to ${verb} ${selectedIds.length} secret(s).`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#007bff',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: `Yes, ${verb} them!`,
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    submitBulkAction(actionUrl, selectedIds);
-                }
-            });
-        } else {
-            if (confirm(`You are about to ${verb} ${selectedIds.length} secret(s). Continue?`)) {
-                submitBulkAction(actionUrl, selectedIds);
-            }
-        }
-    }
-
-    function submitBulkAction(actionUrl, selectedIds) {
-        const form = $('<form>', {
-            method: 'POST',
-            action: actionUrl
-        });
-        
-        form.append($('<input>', {
-            type: 'hidden',
-            name: '_token',
-            value: '{{ csrf_token() }}'
-        }));
-        
-        selectedIds.forEach(id => {
-            form.append($('<input>', {
-                type: 'hidden',
-                name: 'selected_secrets[]',
-                value: id
-            }));
-        });
-        
-        $('body').append(form);
-        form.submit();
-    }
-
-    // Bulk delete functionality
-    $('#bulkDeleteBtn').click(function() {
-        const selectedIds = [];
-        $('input[name="selected_secrets[]"]:checked').each(function() {
-            selectedIds.push($(this).val());
-        });
-
-        if (selectedIds.length === 0) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Selection',
-                    text: 'Please select secrets to delete.',
-                    confirmButtonClass: 'btn btn-primary'
-                });
-            } else {
-                alert('Please select secrets to delete.');
-            }
-            return;
-        }
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Delete Selected Secrets?',
-                text: `You are about to delete ${selectedIds.length} secret(s). This action cannot be undone!`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete them!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const form = $('<form>', {
-                        method: 'POST',
-                        action: '{{ route("ppp-secrets.bulk-delete") }}'
-                    });
-                    
-                    form.append($('<input>', {
-                        type: 'hidden',
-                        name: '_token',
-                        value: '{{ csrf_token() }}'
-                    }));
-                    form.append($('<input>', {
-                        type: 'hidden',
-                        name: '_method',
-                        value: 'DELETE'
-                    }));
-                    
-                    selectedIds.forEach(id => {
-                        form.append($('<input>', {
-                            type: 'hidden',
-                            name: 'selected_secrets[]',
-                            value: id
-                        }));
-                    });
-                    
-                    $('body').append(form);
-                    form.submit();
-                }
-            });
-        } else {
-            if (confirm(`You are about to delete ${selectedIds.length} secret(s). This action cannot be undone! Continue?`)) {
-                // Submit form without Swal
-                const form = $('<form>', {
-                    method: 'POST',
-                    action: '{{ route("ppp-secrets.bulk-delete") }}'
-                });
-                
-                form.append($('<input>', {
-                    type: 'hidden',
-                    name: '_token',
-                    value: '{{ csrf_token() }}'
-                }));
-                form.append($('<input>', {
-                    type: 'hidden',
-                    name: '_method',
-                    value: 'DELETE'
-                }));
-                
-                selectedIds.forEach(id => {
-                    form.append($('<input>', {
-                        type: 'hidden',
-                        name: 'selected_secrets[]',
-                        value: id
-                    }));
-                });
-                
-                $('body').append(form);
-                form.submit();
-            }
-        }
-    });
-
-    // Bulk enable functionality
-    $('#bulkEnableBtn').click(function() {
-        bulkAction('{{ route("ppp-secrets.bulk-enable") }}', 'Enable Selected Secrets?', 'enable');
-    });
-
-    // Bulk disable functionality
-    $('#bulkDisableBtn').click(function() {
-        bulkAction('{{ route("ppp-secrets.bulk-disable") }}', 'Disable Selected Secrets?', 'disable');
-    });
-
-    // Bulk sync functionality
-    $('#bulkSyncBtn').click(function() {
-        bulkAction('{{ route("ppp-secrets.bulk-sync") }}', 'Sync Selected Secrets?', 'sync');
-    });
-
-    // Copy to clipboard functionality
-    function copyToClipboard(text, element) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                // Show success feedback
-                const originalHtml = $(element).html();
-                $(element).html('<i class="fas fa-check text-success"></i>');
-                setTimeout(() => {
-                    $(element).html(originalHtml);
-                }, 1000);
-                
-                // Show toast notification if available
-                if (typeof toastr !== 'undefined') {
-                    toastr.success('Copied to clipboard!', 'Success', {
-                        timeOut: 2000,
-                        positionClass: 'toast-top-right'
-                    });
-                }
-            }).catch(function(err) {
-                console.error('Copy failed:', err);
-                if (typeof toastr !== 'undefined') {
-                    toastr.error('Failed to copy', 'Error');
-                }
-            });
-        } else {
-            // Fallback for older browsers
-            console.warn('Clipboard API not available');
-        }
-    }
-
-    // Make copyToClipboard globally accessible
-    window.copyToClipboard = function(text) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                if (typeof toastr !== 'undefined') {
-                    toastr.success('Copied to clipboard!', 'Success', {
-                        timeOut: 2000,
-                        positionClass: 'toast-top-right'
-                    });
-                }
-            }).catch(function(err) {
-                console.error('Copy failed:', err);
-                if (typeof toastr !== 'undefined') {
-                    toastr.error('Failed to copy', 'Error');
-                }
-            });
-        }
-    };
-
-    // Handle copy button clicks
-    $(document).on('click', '.copy-btn', function(e) {
-        e.preventDefault();
-        const text = $(this).data('copy');
-        copyToClipboard(text, this);
-    });
-
-    // Delete confirmation
-    $('.delete-form').on('submit', function(e) {
-        e.preventDefault();
-        const form = this;
-        
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Delete Secret?',
-                text: "This action cannot be undone!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        } else {
-            if (confirm('Delete this secret? This action cannot be undone!')) {
-                form.submit();
-            }
-        }
-    });
-
-    // Generate username
-    $('#generate-username').click(function(e) {
-        e.preventDefault();
-        const $btn = $(this);
-        const originalText = $btn.html();
-        
-        $btn.html('<i class="fas fa-spinner fa-spin"></i> Generating...').prop('disabled', true);
-        
-        $.get('{{ route("ppp-secrets.generate-username") }}')
-            .done(function(data) {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Username Generated!',
-                        html: `
-                            <div class="mb-3">
-                                <strong>New Username:</strong>
-                                <div class="input-group mt-2">
-                                    <input type="text" class="form-control text-center font-weight-bold" 
-                                           value="${data.username}" readonly>
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary" type="button" 
-                                                onclick="copyToClipboard('${data.username}')" 
-                                                title="Copy to clipboard">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: '<i class="fas fa-check"></i> Got it!',
-                        confirmButtonClass: 'btn btn-primary'
-                    });
-                } else {
-                    alert(`Username Generated: ${data.username}`);
-                }
-            })
-            .fail(function() {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to generate username. Please try again.',
-                        icon: 'error'
-                    });
-                } else {
-                    alert('Failed to generate username. Please try again.');
-                }
-            })
-            .always(function() {
-                $btn.html(originalText).prop('disabled', false);
-            });
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('PPP Secrets page loaded successfully');
     
-    // Generate password
-    $('#generate-password').click(function(e) {
-        e.preventDefault();
-        const $btn = $(this);
-        const originalText = $btn.html();
-        
-        $btn.html('<i class="fas fa-spinner fa-spin"></i> Generating...').prop('disabled', true);
-        
-        $.get('{{ route("ppp-secrets.generate-password") }}')
-            .done(function(data) {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Password Generated!',
-                        html: `
-                            <div class="mb-3">
-                                <strong>New Password:</strong>
-                                <div class="input-group mt-2">
-                                    <input type="text" class="form-control text-center font-weight-bold" 
-                                           value="${data.password}" readonly>
-                                    <div class="input-group-append">
-                                        <button class="btn btn-outline-secondary" type="button" 
-                                                onclick="copyToClipboard('${data.password}')" 
-                                                title="Copy to clipboard">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <small class="text-muted mt-2 d-block">
-                                    <i class="fas fa-info-circle"></i> 
-                                    Strong password with letters, numbers, and symbols
-                                </small>
-                            </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: '<i class="fas fa-check"></i> Got it!',
-                        confirmButtonClass: 'btn btn-primary'
-                    });
-                } else {
-                    alert(`Password Generated: ${data.password}`);
+    // Initialize tooltips
+    if (typeof $ !== 'undefined') {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+    
+    // Sync from MikroTik button
+    const syncBtn = document.getElementById('syncFromMikrotikBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: '📥 Sync PPP Secrets from MikroTik?',
+                    html: '<p>This will download and sync PPP secrets from your MikroTik router.</p>',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Start Sync!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Submit form
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '{{ route("ppp-secrets.sync-from-mikrotik") }}';
+                        
+                        const token = document.createElement('input');
+                        token.type = 'hidden';
+                        token.name = '_token';
+                        token.value = '{{ csrf_token() }}';
+                        form.appendChild(token);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            } else {
+                // Fallback if SweetAlert not loaded
+                if (confirm('Sync PPP Secrets from MikroTik?')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{{ route("ppp-secrets.sync-from-mikrotik") }}';
+                    
+                    const token = document.createElement('input');
+                    token.type = 'hidden';
+                    token.name = '_token';
+                    token.value = '{{ csrf_token() }}';
+                    form.appendChild(token);
+                    
+                    document.body.appendChild(form);
+                    form.submit();
                 }
-            })
-            .fail(function() {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to generate password. Please try again.',
-                        icon: 'error'
-                    });
-                } else {
-                    alert('Failed to generate password. Please try again.');
-                }
-            })
-            .always(function() {
-                $btn.html(originalText).prop('disabled', false);
-            });
-    });
-
-    // Auto-hide alerts after 5 seconds
-    setTimeout(function() {
-        $('.alert').fadeOut('slow');
-    }, 5000);
-
-    // Refresh page functionality
-    $('#refreshBtn').click(function() {
-        location.reload();
-    });
+            }
+        });
+    }
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            location.reload();
+        });
+    }
 });
+
+// Debug functions
+function testConnection() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire('Connection Test', 'This would test the MikroTik connection', 'info');
+    } else {
+        alert('This would test the MikroTik connection');
+    }
+}
+
+function testSync() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire('Sync Test', 'This would test the sync functionality', 'info');
+    } else {
+        alert('This would test the sync functionality');
+    }
+}
+
+// Delete secret function
+function deleteSecret(secretId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '🗑️ Delete PPP Secret?',
+            html: '<p>Are you sure you want to delete this PPP secret?</p><p class="text-danger"><strong>⚠️ This action cannot be undone!</strong></p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ppp-secrets/${secretId}`;
+                
+                const methodField = document.createElement('input');
+                methodField.type = 'hidden';
+                methodField.name = '_method';
+                methodField.value = 'DELETE';
+                form.appendChild(methodField);
+                
+                const tokenField = document.createElement('input');
+                tokenField.type = 'hidden';
+                tokenField.name = '_token';
+                tokenField.value = '{{ csrf_token() }}';
+                form.appendChild(tokenField);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    } else {
+        if (confirm('Are you sure you want to delete this PPP secret?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/ppp-secrets/${secretId}`;
+            
+            const methodField = document.createElement('input');
+            methodField.type = 'hidden';
+            methodField.name = '_method';
+            methodField.value = 'DELETE';
+            form.appendChild(methodField);
+            
+            const tokenField = document.createElement('input');
+            tokenField.type = 'hidden';
+            tokenField.name = '_token';
+            tokenField.value = '{{ csrf_token() }}';
+            form.appendChild(tokenField);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+
+// Enable secret function
+function enableSecret(secretId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '✅ Enable PPP Secret?',
+            html: '<p>Are you sure you want to enable this PPP secret?</p>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-check"></i> Yes, Enable!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ppp-secrets/${secretId}/enable`;
+                
+                const tokenField = document.createElement('input');
+                tokenField.type = 'hidden';
+                tokenField.name = '_token';
+                tokenField.value = '{{ csrf_token() }}';
+                form.appendChild(tokenField);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+}
+
+// Disable secret function
+function disableSecret(secretId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '🚫 Disable PPP Secret?',
+            html: '<p>Are you sure you want to disable this PPP secret?</p><p class="text-warning">The user will be unable to connect until re-enabled.</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ffc107',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-ban"></i> Yes, Disable!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ppp-secrets/${secretId}/disable`;
+                
+                const tokenField = document.createElement('input');
+                tokenField.type = 'hidden';
+                tokenField.name = '_token';
+                tokenField.value = '{{ csrf_token() }}';
+                form.appendChild(tokenField);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+}
+
+// Sync secret function
+function syncSecret(secretId) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '🔄 Sync Secret to MikroTik?',
+            html: '<p>This will sync this PPP secret to your MikroTik router.</p>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#007bff',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-sync"></i> Yes, Sync!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ppp-secrets/${secretId}/sync-to-mikrotik`;
+                
+                const tokenField = document.createElement('input');
+                tokenField.type = 'hidden';
+                tokenField.name = '_token';
+                tokenField.value = '{{ csrf_token() }}';
+                form.appendChild(tokenField);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+}
 </script>
 @endpush

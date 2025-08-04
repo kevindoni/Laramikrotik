@@ -251,10 +251,10 @@
 
                         <hr>
 
-                        <form action="{{ route('ppp-profiles.destroy', $pppProfile) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to delete this profile? This action cannot be undone.') }}')">
+                        <form action="{{ route('ppp-profiles.destroy', $pppProfile) }}" method="POST" id="deleteProfileForm">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger btn-block" 
+                            <button type="button" class="btn btn-outline-danger btn-block" id="deleteProfileBtn"
                                     {{ $pppProfile->pppSecrets->count() > 0 ? 'disabled title="Cannot delete profile with active PPP secrets"' : '' }}>
                                 <i class="fas fa-trash"></i> {{ __('Delete Profile') }}
                             </button>
@@ -265,3 +265,41 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // SweetAlert for Delete Profile
+    $('#deleteProfileBtn').click(function(e) {
+        e.preventDefault();
+        
+        // Check if button is disabled
+        if ($(this).prop('disabled')) {
+            return;
+        }
+        
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '🗑️ Delete PPP Profile?',
+                html: '<div class="text-left"><p>Are you sure you want to delete this profile?</p><ul class="mb-0"><li><strong>This action cannot be undone</strong></li><li>Profile will be permanently removed</li><li>Make sure no PPP secrets are using this profile</li></ul></div>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete Profile!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#deleteProfileForm').submit();
+                }
+            });
+        } else {
+            // Fallback
+            if (confirm('Are you sure you want to delete this profile? This action cannot be undone.')) {
+                $('#deleteProfileForm').submit();
+            }
+        }
+    });
+});
+</script>
+@endpush

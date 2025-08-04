@@ -511,7 +511,7 @@
 
                         {{-- Disconnect Session Button --}}
                         @if($realTimeStatus && $realTimeStatus['status'] === 'connected')
-                            <form action="{{ route('ppp-secrets.disconnect', $pppSecret) }}" method="POST" onsubmit="return confirm('{{ __('Are you sure you want to disconnect this user session? This will immediately terminate their internet connection.') }}')">
+                            <form action="{{ route('ppp-secrets.disconnect', $pppSecret) }}" method="POST" class="disconnect-session-form">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-danger btn-block">
                                     <i class="fas fa-unlink"></i> {{ __('Disconnect Session') }}
@@ -675,9 +675,68 @@
             message += '{{ __('You can manually delete it from MikroTik later if needed.') }}';
         }
         
-        if (confirm(message)) {
-            document.getElementById('deleteForm').submit();
-        }
+        Swal.fire({
+            title: '🗑️ Delete PPP Secret?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">${message}</p>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> Yes, Delete!',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            customClass: {
+                confirmButton: 'btn btn-danger mx-2',
+                cancelButton: 'btn btn-secondary mx-2'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('deleteForm').submit();
+            }
+        });
     }
+
+    // Disconnect session with SweetAlert
+    $('.disconnect-session-form').on('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        
+        Swal.fire({
+            title: '🔌 Disconnect User Session?',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3">Are you sure you want to disconnect this user session?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>This will:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Immediately terminate their internet connection</li>
+                            <li>Force user to reconnect</li>
+                            <li>Clear current session data</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-unlink"></i> Yes, Disconnect!',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancel',
+            customClass: {
+                confirmButton: 'btn btn-danger mx-2',
+                cancelButton: 'btn btn-secondary mx-2'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
 </script>
 @endpush
