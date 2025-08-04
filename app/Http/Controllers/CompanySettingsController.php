@@ -86,7 +86,7 @@ class CompanySettingsController extends Controller
             'show_ewallet_gopay' => $request->input('show_ewallet_gopay', false),
             'show_ewallet_shopeepay' => $request->input('show_ewallet_shopeepay', false),
             'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
-            'show_manual_payment' => $request->input('show_manual_payment', false),
+            'show_manual_payment' => $request->has('show_manual_payment'),
         ];
 
 
