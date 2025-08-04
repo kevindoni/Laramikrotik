@@ -441,14 +441,6 @@
                     <p class="mb-2"><strong>Informasi Pembayaran Manual:</strong></p>
                     <p class="mb-3">{{ $settings['manual_payment_info'] }}</p>
                     @endif
-                    
-                    <!-- Debug info -->
-                    <div style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
-                        <strong>Debug Info:</strong><br>
-                        show_manual_payment: {{ $settings['show_manual_payment'] ? 'true' : 'false' }}<br>
-                        manual_payment_info: "{{ $settings['manual_payment_info'] ?? 'null' }}"<br>
-                        Condition: {{ ($settings['show_manual_payment'] && $settings['manual_payment_info']) ? 'true' : 'false' }}
-                    </div>
 
                     @if($settings['payment_note'])
                     <p class="mb-2"><strong>Note:</strong></p>

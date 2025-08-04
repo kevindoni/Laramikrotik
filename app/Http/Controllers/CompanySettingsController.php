@@ -52,6 +52,9 @@ class CompanySettingsController extends Controller
 
 
 
+        // Debug: Log all request data
+        \Log::info('All request data:', $request->all());
+        
         $settings = [
             'company_name' => $request->company_name,
             'address' => $request->address,
