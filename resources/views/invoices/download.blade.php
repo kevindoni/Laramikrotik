@@ -371,26 +371,63 @@
             <div class="payment-info">
                 <h5>Payment Instructions:</h5>
                 
-                @if(isset($companySettings['bank_bca']) && $companySettings['bank_bca'])
+                @php
+                    $hasBankTransfer = (isset($companySettings['show_bank_bca']) && $companySettings['show_bank_bca'] && isset($companySettings['bank_bca']) && $companySettings['bank_bca']) || 
+                                      (isset($companySettings['show_bank_mandiri']) && $companySettings['show_bank_mandiri'] && isset($companySettings['bank_mandiri']) && $companySettings['bank_mandiri']) || 
+                                      (isset($companySettings['show_bank_bni']) && $companySettings['show_bank_bni'] && isset($companySettings['bank_bni']) && $companySettings['bank_bni']) || 
+                                      (isset($companySettings['show_bank_bri']) && $companySettings['show_bank_bri'] && isset($companySettings['bank_bri']) && $companySettings['bank_bri']);
+                    
+                    $hasEWallet = (isset($companySettings['show_ewallet_dana']) && $companySettings['show_ewallet_dana'] && isset($companySettings['ewallet_dana']) && $companySettings['ewallet_dana']) || 
+                                 (isset($companySettings['show_ewallet_ovo']) && $companySettings['show_ewallet_ovo'] && isset($companySettings['ewallet_ovo']) && $companySettings['ewallet_ovo']) || 
+                                 (isset($companySettings['show_ewallet_gopay']) && $companySettings['show_ewallet_gopay'] && isset($companySettings['ewallet_gopay']) && $companySettings['ewallet_gopay']) || 
+                                 (isset($companySettings['show_ewallet_shopeepay']) && $companySettings['show_ewallet_shopeepay'] && isset($companySettings['ewallet_shopeepay']) && $companySettings['ewallet_shopeepay']) || 
+                                 (isset($companySettings['show_ewallet_linkaja']) && $companySettings['show_ewallet_linkaja'] && isset($companySettings['ewallet_linkaja']) && $companySettings['ewallet_linkaja']);
+                @endphp
+                
+                @if($hasBankTransfer)
                 <p><strong>Bank Transfer:</strong></p>
+                @if(isset($companySettings['show_bank_bca']) && $companySettings['show_bank_bca'] && isset($companySettings['bank_bca']) && $companySettings['bank_bca'])
                 <p>Bank BCA: {{ $companySettings['bank_bca'] }}</p>
                 @endif
                 
-                @if(isset($companySettings['bank_mandiri']) && $companySettings['bank_mandiri'])
+                @if(isset($companySettings['show_bank_mandiri']) && $companySettings['show_bank_mandiri'] && isset($companySettings['bank_mandiri']) && $companySettings['bank_mandiri'])
                 <p>Bank Mandiri: {{ $companySettings['bank_mandiri'] }}</p>
+                @endif
+                
+                @if(isset($companySettings['show_bank_bni']) && $companySettings['show_bank_bni'] && isset($companySettings['bank_bni']) && $companySettings['bank_bni'])
+                <p>Bank BNI: {{ $companySettings['bank_bni'] }}</p>
+                @endif
+                
+                @if(isset($companySettings['show_bank_bri']) && $companySettings['show_bank_bri'] && isset($companySettings['bank_bri']) && $companySettings['bank_bri'])
+                <p>Bank BRI: {{ $companySettings['bank_bri'] }}</p>
                 @endif
                 
                 @if(isset($companySettings['bank_account_name']) && $companySettings['bank_account_name'])
                 <p>A/N: {{ $companySettings['bank_account_name'] }}</p>
                 @endif
+                @endif
                 
-                @if(isset($companySettings['ewallet_dana']) && $companySettings['ewallet_dana'])
+                @if($hasEWallet)
                 <p><strong>E-Wallet:</strong></p>
+                @if(isset($companySettings['show_ewallet_dana']) && $companySettings['show_ewallet_dana'] && isset($companySettings['ewallet_dana']) && $companySettings['ewallet_dana'])
                 <p>DANA: {{ $companySettings['ewallet_dana'] }}</p>
                 @endif
                 
-                @if(isset($companySettings['ewallet_ovo']) && $companySettings['ewallet_ovo'])
+                @if(isset($companySettings['show_ewallet_ovo']) && $companySettings['show_ewallet_ovo'] && isset($companySettings['ewallet_ovo']) && $companySettings['ewallet_ovo'])
                 <p>OVO: {{ $companySettings['ewallet_ovo'] }}</p>
+                @endif
+                
+                @if(isset($companySettings['show_ewallet_gopay']) && $companySettings['show_ewallet_gopay'] && isset($companySettings['ewallet_gopay']) && $companySettings['ewallet_gopay'])
+                <p>GoPay: {{ $companySettings['ewallet_gopay'] }}</p>
+                @endif
+                
+                @if(isset($companySettings['show_ewallet_shopeepay']) && $companySettings['show_ewallet_shopeepay'] && isset($companySettings['ewallet_shopeepay']) && $companySettings['ewallet_shopeepay'])
+                <p>ShopeePay: {{ $companySettings['ewallet_shopeepay'] }}</p>
+                @endif
+                
+                @if(isset($companySettings['show_ewallet_linkaja']) && $companySettings['show_ewallet_linkaja'] && isset($companySettings['ewallet_linkaja']) && $companySettings['ewallet_linkaja'])
+                <p>LinkAja: {{ $companySettings['ewallet_linkaja'] }}</p>
+                @endif
                 @endif
                 
                 @if(isset($companySettings['payment_note']) && $companySettings['payment_note'])

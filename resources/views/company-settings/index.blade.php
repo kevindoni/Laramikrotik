@@ -94,57 +94,196 @@
                         <hr>
                         <h6 class="font-weight-bold text-primary mb-3">Payment Information</h6>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="bank_bca">Bank BCA Account</label>
-                                    <input type="text" class="form-control @error('bank_bca') is-invalid @enderror" 
-                                           id="bank_bca" name="bank_bca" value="{{ old('bank_bca', $settings['bank_bca']) }}">
-                                    @error('bank_bca')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                        <!-- Bank Transfer Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 font-weight-bold">Bank Transfer</h6>
                             </div>
-                            <div class="col-md-6">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_bank_bca" name="show_bank_bca" 
+                                                       {{ $settings['show_bank_bca'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_bank_bca">
+                                                    <strong>Bank BCA</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('bank_bca') is-invalid @enderror" 
+                                                   id="bank_bca" name="bank_bca" value="{{ old('bank_bca', $settings['bank_bca']) }}" 
+                                                   placeholder="1234567890">
+                                            @error('bank_bca')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_bank_mandiri" name="show_bank_mandiri" 
+                                                       {{ $settings['show_bank_mandiri'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_bank_mandiri">
+                                                    <strong>Bank Mandiri</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('bank_mandiri') is-invalid @enderror" 
+                                                   id="bank_mandiri" name="bank_mandiri" value="{{ old('bank_mandiri', $settings['bank_mandiri']) }}" 
+                                                   placeholder="0987654321">
+                                            @error('bank_mandiri')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_bank_bni" name="show_bank_bni" 
+                                                       {{ $settings['show_bank_bni'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_bank_bni">
+                                                    <strong>Bank BNI</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('bank_bni') is-invalid @enderror" 
+                                                   id="bank_bni" name="bank_bni" value="{{ old('bank_bni', $settings['bank_bni']) }}" 
+                                                   placeholder="1122334455">
+                                            @error('bank_bni')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_bank_bri" name="show_bank_bri" 
+                                                       {{ $settings['show_bank_bri'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_bank_bri">
+                                                    <strong>Bank BRI</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('bank_bri') is-invalid @enderror" 
+                                                   id="bank_bri" name="bank_bri" value="{{ old('bank_bri', $settings['bank_bri']) }}" 
+                                                   placeholder="5544332211">
+                                            @error('bank_bri')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
-                                    <label for="bank_mandiri">Bank Mandiri Account</label>
-                                    <input type="text" class="form-control @error('bank_mandiri') is-invalid @enderror" 
-                                           id="bank_mandiri" name="bank_mandiri" value="{{ old('bank_mandiri', $settings['bank_mandiri']) }}">
-                                    @error('bank_mandiri')
+                                    <label for="bank_account_name">Bank Account Name</label>
+                                    <input type="text" class="form-control @error('bank_account_name') is-invalid @enderror" 
+                                           id="bank_account_name" name="bank_account_name" value="{{ old('bank_account_name', $settings['bank_account_name']) }}" 
+                                           placeholder="LaraNetworks">
+                                    @error('bank_account_name')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="bank_account_name">Bank Account Name</label>
-                            <input type="text" class="form-control @error('bank_account_name') is-invalid @enderror" 
-                                   id="bank_account_name" name="bank_account_name" value="{{ old('bank_account_name', $settings['bank_account_name']) }}">
-                            @error('bank_account_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="ewallet_dana">DANA E-Wallet</label>
-                                    <input type="text" class="form-control @error('ewallet_dana') is-invalid @enderror" 
-                                           id="ewallet_dana" name="ewallet_dana" value="{{ old('ewallet_dana', $settings['ewallet_dana']) }}">
-                                    @error('ewallet_dana')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                        <!-- E-Wallet Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0 font-weight-bold">E-Wallet</h6>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="ewallet_ovo">OVO E-Wallet</label>
-                                    <input type="text" class="form-control @error('ewallet_ovo') is-invalid @enderror" 
-                                           id="ewallet_ovo" name="ewallet_ovo" value="{{ old('ewallet_ovo', $settings['ewallet_ovo']) }}">
-                                    @error('ewallet_ovo')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_ewallet_dana" name="show_ewallet_dana" 
+                                                       {{ $settings['show_ewallet_dana'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_ewallet_dana">
+                                                    <strong>DANA</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('ewallet_dana') is-invalid @enderror" 
+                                                   id="ewallet_dana" name="ewallet_dana" value="{{ old('ewallet_dana', $settings['ewallet_dana']) }}" 
+                                                   placeholder="0812-3456-7890">
+                                            @error('ewallet_dana')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_ewallet_ovo" name="show_ewallet_ovo" 
+                                                       {{ $settings['show_ewallet_ovo'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_ewallet_ovo">
+                                                    <strong>OVO</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('ewallet_ovo') is-invalid @enderror" 
+                                                   id="ewallet_ovo" name="ewallet_ovo" value="{{ old('ewallet_ovo', $settings['ewallet_ovo']) }}" 
+                                                   placeholder="0812-3456-7890">
+                                            @error('ewallet_ovo')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_ewallet_gopay" name="show_ewallet_gopay" 
+                                                       {{ $settings['show_ewallet_gopay'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_ewallet_gopay">
+                                                    <strong>GoPay</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('ewallet_gopay') is-invalid @enderror" 
+                                                   id="ewallet_gopay" name="ewallet_gopay" value="{{ old('ewallet_gopay', $settings['ewallet_gopay']) }}" 
+                                                   placeholder="0812-3456-7890">
+                                            @error('ewallet_gopay')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_ewallet_shopeepay" name="show_ewallet_shopeepay" 
+                                                       {{ $settings['show_ewallet_shopeepay'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_ewallet_shopeepay">
+                                                    <strong>ShopeePay</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('ewallet_shopeepay') is-invalid @enderror" 
+                                                   id="ewallet_shopeepay" name="ewallet_shopeepay" value="{{ old('ewallet_shopeepay', $settings['ewallet_shopeepay']) }}" 
+                                                   placeholder="0812-3456-7890">
+                                            @error('ewallet_shopeepay')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input type="checkbox" class="custom-control-input" id="show_ewallet_linkaja" name="show_ewallet_linkaja" 
+                                                       {{ $settings['show_ewallet_linkaja'] ? 'checked' : '' }}>
+                                                <label class="custom-control-label" for="show_ewallet_linkaja">
+                                                    <strong>LinkAja</strong>
+                                                </label>
+                                            </div>
+                                            <input type="text" class="form-control @error('ewallet_linkaja') is-invalid @enderror" 
+                                                   id="ewallet_linkaja" name="ewallet_linkaja" value="{{ old('ewallet_linkaja', $settings['ewallet_linkaja']) }}" 
+                                                   placeholder="0812-3456-7890">
+                                            @error('ewallet_linkaja')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -219,26 +358,54 @@
                     <hr>
                     <h6 class="font-weight-bold">Payment Instructions:</h6>
                     
-                    @if($settings['bank_bca'] || $settings['bank_mandiri'])
+                    @php
+                        $hasBankTransfer = ($settings['show_bank_bca'] && $settings['bank_bca']) || 
+                                          ($settings['show_bank_mandiri'] && $settings['bank_mandiri']) || 
+                                          ($settings['show_bank_bni'] && $settings['bank_bni']) || 
+                                          ($settings['show_bank_bri'] && $settings['bank_bri']);
+                        
+                        $hasEWallet = ($settings['show_ewallet_dana'] && $settings['ewallet_dana']) || 
+                                     ($settings['show_ewallet_ovo'] && $settings['ewallet_ovo']) || 
+                                     ($settings['show_ewallet_gopay'] && $settings['ewallet_gopay']) || 
+                                     ($settings['show_ewallet_shopeepay'] && $settings['ewallet_shopeepay']) || 
+                                     ($settings['show_ewallet_linkaja'] && $settings['ewallet_linkaja']);
+                    @endphp
+                    
+                    @if($hasBankTransfer)
                     <p class="mb-2"><strong>Bank Transfer:</strong></p>
-                    @if($settings['bank_bca'])
+                    @if($settings['show_bank_bca'] && $settings['bank_bca'])
                     <p class="mb-1">Bank BCA: {{ $settings['bank_bca'] }}</p>
                     @endif
-                    @if($settings['bank_mandiri'])
+                    @if($settings['show_bank_mandiri'] && $settings['bank_mandiri'])
                     <p class="mb-1">Bank Mandiri: {{ $settings['bank_mandiri'] }}</p>
+                    @endif
+                    @if($settings['show_bank_bni'] && $settings['bank_bni'])
+                    <p class="mb-1">Bank BNI: {{ $settings['bank_bni'] }}</p>
+                    @endif
+                    @if($settings['show_bank_bri'] && $settings['bank_bri'])
+                    <p class="mb-1">Bank BRI: {{ $settings['bank_bri'] }}</p>
                     @endif
                     @if($settings['bank_account_name'])
                     <p class="mb-3">A/N: {{ $settings['bank_account_name'] }}</p>
                     @endif
                     @endif
 
-                    @if($settings['ewallet_dana'] || $settings['ewallet_ovo'])
+                    @if($hasEWallet)
                     <p class="mb-2"><strong>E-Wallet:</strong></p>
-                    @if($settings['ewallet_dana'])
+                    @if($settings['show_ewallet_dana'] && $settings['ewallet_dana'])
                     <p class="mb-1">DANA: {{ $settings['ewallet_dana'] }}</p>
                     @endif
-                    @if($settings['ewallet_ovo'])
-                    <p class="mb-3">OVO: {{ $settings['ewallet_ovo'] }}</p>
+                    @if($settings['show_ewallet_ovo'] && $settings['ewallet_ovo'])
+                    <p class="mb-1">OVO: {{ $settings['ewallet_ovo'] }}</p>
+                    @endif
+                    @if($settings['show_ewallet_gopay'] && $settings['ewallet_gopay'])
+                    <p class="mb-1">GoPay: {{ $settings['ewallet_gopay'] }}</p>
+                    @endif
+                    @if($settings['show_ewallet_shopeepay'] && $settings['ewallet_shopeepay'])
+                    <p class="mb-1">ShopeePay: {{ $settings['ewallet_shopeepay'] }}</p>
+                    @endif
+                    @if($settings['show_ewallet_linkaja'] && $settings['ewallet_linkaja'])
+                    <p class="mb-3">LinkAja: {{ $settings['ewallet_linkaja'] }}</p>
                     @endif
                     @endif
 
