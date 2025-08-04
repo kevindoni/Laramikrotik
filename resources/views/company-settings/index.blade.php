@@ -27,6 +27,7 @@
                         @csrf
                         @method('PUT')
 
+                        <!-- Company Information -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -289,7 +290,7 @@
                         </div>
 
                         <!-- Manual Payment Information -->
-                        <div class="card">
+                        <div class="card mb-3">
                             <div class="card-header">
                                 <h6 class="m-0 font-weight-bold text-primary">Informasi Pembayaran Manual</h6>
                             </div>
@@ -316,6 +317,7 @@
                             </div>
                         </div>
 
+                        <!-- Additional Settings -->
                         <div class="form-group">
                             <label for="payment_note">Payment Note</label>
                             <textarea class="form-control @error('payment_note') is-invalid @enderror" 
@@ -338,7 +340,7 @@
                             <label for="developer_by">Developer By</label>
                             <input type="text" class="form-control @error('developer_by') is-invalid @enderror" 
                                    id="developer_by" name="developer_by" value="{{ old('developer_by', $settings['developer_by']) }}"
-                                   placeholder="e.g., AleckRH">
+                                   placeholder="e.g., Kevindoni">
                             @error('developer_by')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -369,6 +371,7 @@
             </div>
         </div>
 
+        <!-- Preview Section -->
         <div class="col-lg-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
@@ -400,75 +403,67 @@
                     @endphp
                     
                     @if($hasBankTransfer)
-                    <p class="mb-2"><strong>Bank Transfer:</strong></p>
-                    @if($settings['show_bank_bca'] && $settings['bank_bca'])
-                    <p class="mb-1">Bank BCA: {{ $settings['bank_bca'] }}</p>
-                    @endif
-                    @if($settings['show_bank_mandiri'] && $settings['bank_mandiri'])
-                    <p class="mb-1">Bank Mandiri: {{ $settings['bank_mandiri'] }}</p>
-                    @endif
-                    @if($settings['show_bank_bni'] && $settings['bank_bni'])
-                    <p class="mb-1">Bank BNI: {{ $settings['bank_bni'] }}</p>
-                    @endif
-                    @if($settings['show_bank_bri'] && $settings['bank_bri'])
-                    <p class="mb-1">Bank BRI: {{ $settings['bank_bri'] }}</p>
-                    @endif
-                    @if($settings['bank_account_name'])
-                    <p class="mb-3">A/N: {{ $settings['bank_account_name'] }}</p>
-                    @endif
+                        <p class="mb-2"><strong>Bank Transfer:</strong></p>
+                        @if($settings['show_bank_bca'] && $settings['bank_bca'])
+                            <p class="mb-1">Bank BCA: {{ $settings['bank_bca'] }}</p>
+                        @endif
+                        @if($settings['show_bank_mandiri'] && $settings['bank_mandiri'])
+                            <p class="mb-1">Bank Mandiri: {{ $settings['bank_mandiri'] }}</p>
+                        @endif
+                        @if($settings['show_bank_bni'] && $settings['bank_bni'])
+                            <p class="mb-1">Bank BNI: {{ $settings['bank_bni'] }}</p>
+                        @endif
+                        @if($settings['show_bank_bri'] && $settings['bank_bri'])
+                            <p class="mb-1">Bank BRI: {{ $settings['bank_bri'] }}</p>
+                        @endif
+                        @if($settings['bank_account_name'])
+                            <p class="mb-3">A/N: {{ $settings['bank_account_name'] }}</p>
+                        @endif
                     @endif
 
                     @if($hasEWallet)
-                    <p class="mb-2"><strong>E-Wallet:</strong></p>
-                    @if($settings['show_ewallet_dana'] && $settings['ewallet_dana'])
-                    <p class="mb-1">DANA: {{ $settings['ewallet_dana'] }}</p>
-                    @endif
-                    @if($settings['show_ewallet_ovo'] && $settings['ewallet_ovo'])
-                    <p class="mb-1">OVO: {{ $settings['ewallet_ovo'] }}</p>
-                    @endif
-                    @if($settings['show_ewallet_gopay'] && $settings['ewallet_gopay'])
-                    <p class="mb-1">GoPay: {{ $settings['ewallet_gopay'] }}</p>
-                    @endif
-                    @if($settings['show_ewallet_shopeepay'] && $settings['ewallet_shopeepay'])
-                    <p class="mb-1">ShopeePay: {{ $settings['ewallet_shopeepay'] }}</p>
-                    @endif
-                    @if($settings['show_ewallet_linkaja'] && $settings['ewallet_linkaja'])
-                    <p class="mb-3">LinkAja: {{ $settings['ewallet_linkaja'] }}</p>
-                    @endif
+                        <p class="mb-2"><strong>E-Wallet:</strong></p>
+                        @if($settings['show_ewallet_dana'] && $settings['ewallet_dana'])
+                            <p class="mb-1">DANA: {{ $settings['ewallet_dana'] }}</p>
+                        @endif
+                        @if($settings['show_ewallet_ovo'] && $settings['ewallet_ovo'])
+                            <p class="mb-1">OVO: {{ $settings['ewallet_ovo'] }}</p>
+                        @endif
+                        @if($settings['show_ewallet_gopay'] && $settings['ewallet_gopay'])
+                            <p class="mb-1">GoPay: {{ $settings['ewallet_gopay'] }}</p>
+                        @endif
+                        @if($settings['show_ewallet_shopeepay'] && $settings['ewallet_shopeepay'])
+                            <p class="mb-1">ShopeePay: {{ $settings['ewallet_shopeepay'] }}</p>
+                        @endif
+                        @if($settings['show_ewallet_linkaja'] && $settings['ewallet_linkaja'])
+                            <p class="mb-3">LinkAja: {{ $settings['ewallet_linkaja'] }}</p>
+                        @endif
                     @endif
 
                     @if($settings['show_manual_payment'] && $settings['manual_payment_info'])
-                    <p class="mb-2"><strong>Informasi Pembayaran Manual:</strong></p>
-                    <p class="mb-3">{{ $settings['manual_payment_info'] }}</p>
+                        <p class="mb-2"><strong>Informasi Pembayaran Manual:</strong></p>
+                        <p class="mb-3">{{ $settings['manual_payment_info'] }}</p>
                     @endif
-                    
-                    <!-- Debug info -->
-                    <div style="background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;">
-                        <strong>Debug Info:</strong><br>
-                        show_manual_payment: {{ $settings['show_manual_payment'] ? 'true' : 'false' }}<br>
-                        manual_payment_info: "{{ $settings['manual_payment_info'] ?? 'null' }}"<br>
-                        Condition: {{ ($settings['show_manual_payment'] && $settings['manual_payment_info']) ? 'true' : 'false' }}
-                    </div>
 
                     @if($settings['payment_note'])
-                    <p class="mb-2"><strong>Note:</strong></p>
-                    <p class="mb-3">{{ $settings['payment_note'] }}</p>
+                        <p class="mb-2"><strong>Note:</strong></p>
+                        <p class="mb-3">{{ $settings['payment_note'] }}</p>
                     @endif
 
                     @if($settings['footer_note'])
-                    <p class="small text-muted">{{ $settings['footer_note'] }}</p>
+                        <p class="small text-muted">{{ $settings['footer_note'] }}</p>
                     @endif
                     
                     @if($settings['developer_by'])
-                    <hr>
-                    <p class="small text-muted text-center">Developer by 
-                        @if($settings['github_url'])
-                            <a href="{{ $settings['github_url'] }}" target="_blank">{{ $settings['developer_by'] }}</a>
-                        @else
-                            {{ $settings['developer_by'] }}
-                        @endif
-                        . {{ date('Y') }}
-                    </p>
+                        <hr>
+                        <p class="small text-muted text-center">Developer by 
+                            @if($settings['github_url'])
+                                <a href="{{ $settings['github_url'] }}" target="_blank">{{ $settings['developer_by'] }}</a>
+                            @else
+                                {{ $settings['developer_by'] }}
+                            @endif
+                            . {{ date('Y') }}
+                        </p>
                     @endif
                 </div>
             </div>

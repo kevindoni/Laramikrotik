@@ -37,26 +37,8 @@ class CompanySettingsController extends Controller
             'footer_note' => 'nullable|string|max:500',
             'developer_by' => 'nullable|string|max:255',
             'github_url' => 'nullable|url|max:255',
-            // Checkbox untuk memilih metode pembayaran yang aktif
-            'show_bank_bca' => 'nullable|boolean',
-            'show_bank_mandiri' => 'nullable|boolean',
-            'show_bank_bni' => 'nullable|boolean',
-            'show_bank_bri' => 'nullable|boolean',
-            'show_ewallet_dana' => 'nullable|boolean',
-            'show_ewallet_ovo' => 'nullable|boolean',
-            'show_ewallet_gopay' => 'nullable|boolean',
-            'show_ewallet_shopeepay' => 'nullable|boolean',
-            'show_ewallet_linkaja' => 'nullable|boolean',
-            'show_manual_payment' => 'nullable|boolean',
         ]);
 
-
-
-
-        
-        // Debug: Log all request data
-        \Log::info('All request data:', $request->all());
-        
         $settings = [
             'company_name' => $request->company_name,
             'address' => $request->address,
@@ -79,24 +61,19 @@ class CompanySettingsController extends Controller
             'footer_note' => $request->footer_note,
             'developer_by' => $request->developer_by,
             'github_url' => $request->github_url,
-            // Checkbox settings - use input() method to get boolean values
-            'show_bank_bca' => $request->input('show_bank_bca', false),
-            'show_bank_mandiri' => $request->input('show_bank_mandiri', false),
-            'show_bank_bni' => $request->input('show_bank_bni', false),
-            'show_bank_bri' => $request->input('show_bank_bri', false),
-            'show_ewallet_dana' => $request->input('show_ewallet_dana', false),
-            'show_ewallet_ovo' => $request->input('show_ewallet_ovo', false),
-            'show_ewallet_gopay' => $request->input('show_ewallet_gopay', false),
-            'show_ewallet_shopeepay' => $request->input('show_ewallet_shopeepay', false),
-            'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
+            // Checkbox settings - hanya true jika checkbox dicentang
+            'show_bank_bca' => $request->has('show_bank_bca'),
+            'show_bank_mandiri' => $request->has('show_bank_mandiri'),
+            'show_bank_bni' => $request->has('show_bank_bni'),
+            'show_bank_bri' => $request->has('show_bank_bri'),
+            'show_ewallet_dana' => $request->has('show_ewallet_dana'),
+            'show_ewallet_ovo' => $request->has('show_ewallet_ovo'),
+            'show_ewallet_gopay' => $request->has('show_ewallet_gopay'),
+            'show_ewallet_shopeepay' => $request->has('show_ewallet_shopeepay'),
+            'show_ewallet_linkaja' => $request->has('show_ewallet_linkaja'),
             'show_manual_payment' => $request->has('show_manual_payment'),
         ];
-        
-        // Debug: Log saved settings
-        \Log::info('Saved settings:', $settings);
 
-
-        
         Storage::put('company_settings.json', json_encode($settings, JSON_PRETTY_PRINT));
 
         return redirect()->route('company-settings.index')->with('success', 'Company settings updated successfully!');
@@ -121,18 +98,18 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => '0812-3456-7890',
             'ewallet_shopeepay' => '0812-3456-7890',
             'ewallet_linkaja' => '0812-3456-7890',
-            'manual_payment_info' => 'Please include invoice number in payment description',
+            'manual_payment_info' => 'Seabank 86868686868686',
             'payment_note' => 'Please include invoice number in payment description',
             'footer_note' => 'Thank you for your business! For any questions regarding this invoice, please contact us at billing@laranetworks.com',
             'developer_by' => 'Kevindoni',
             'github_url' => 'https://github.com/kevindoni',
-            // Default checkbox settings - semua aktif
-            'show_bank_bca' => true,
-            'show_bank_mandiri' => true,
+            // Default checkbox settings - semua false
+            'show_bank_bca' => false,
+            'show_bank_mandiri' => false,
             'show_bank_bni' => false,
             'show_bank_bri' => false,
-            'show_ewallet_dana' => true,
-            'show_ewallet_ovo' => true,
+            'show_ewallet_dana' => false,
+            'show_ewallet_ovo' => false,
             'show_ewallet_gopay' => false,
             'show_ewallet_shopeepay' => false,
             'show_ewallet_linkaja' => false,
@@ -141,19 +118,6 @@ class CompanySettingsController extends Controller
 
         if (Storage::exists('company_settings.json')) {
             $savedSettings = json_decode(Storage::get('company_settings.json'), true);
-            // Pastikan semua checkbox settings ada dalam saved settings
-            $checkboxFields = [
-                'show_bank_bca', 'show_bank_mandiri', 'show_bank_bni', 'show_bank_bri',
-                'show_ewallet_dana', 'show_ewallet_ovo', 'show_ewallet_gopay', 
-                'show_ewallet_shopeepay', 'show_ewallet_linkaja', 'show_manual_payment'
-            ];
-            
-            foreach ($checkboxFields as $field) {
-                if (!isset($savedSettings[$field])) {
-                    $savedSettings[$field] = false;
-                }
-            }
-            
             return array_merge($defaultSettings, $savedSettings);
         }
 
@@ -179,18 +143,18 @@ class CompanySettingsController extends Controller
             'ewallet_gopay' => '0812-3456-7890',
             'ewallet_shopeepay' => '0812-3456-7890',
             'ewallet_linkaja' => '0812-3456-7890',
-            'manual_payment_info' => 'Please include invoice number in payment description',
+            'manual_payment_info' => 'Seabank 86868686868686',
             'payment_note' => 'Please include invoice number in payment description',
             'footer_note' => 'Thank you for your business! For any questions regarding this invoice, please contact us at billing@laranetworks.com',
             'developer_by' => 'Kevindoni',
             'github_url' => 'https://github.com/kevindoni',
-            // Default checkbox settings
-            'show_bank_bca' => true,
-            'show_bank_mandiri' => true,
+            // Default checkbox settings - semua false
+            'show_bank_bca' => false,
+            'show_bank_mandiri' => false,
             'show_bank_bni' => false,
             'show_bank_bri' => false,
-            'show_ewallet_dana' => true,
-            'show_ewallet_ovo' => true,
+            'show_ewallet_dana' => false,
+            'show_ewallet_ovo' => false,
             'show_ewallet_gopay' => false,
             'show_ewallet_shopeepay' => false,
             'show_ewallet_linkaja' => false,
@@ -199,19 +163,6 @@ class CompanySettingsController extends Controller
 
         if (Storage::exists('company_settings.json')) {
             $savedSettings = json_decode(Storage::get('company_settings.json'), true);
-            // Pastikan semua checkbox settings ada dalam saved settings
-            $checkboxFields = [
-                'show_bank_bca', 'show_bank_mandiri', 'show_bank_bni', 'show_bank_bri',
-                'show_ewallet_dana', 'show_ewallet_ovo', 'show_ewallet_gopay', 
-                'show_ewallet_shopeepay', 'show_ewallet_linkaja', 'show_manual_payment'
-            ];
-            
-            foreach ($checkboxFields as $field) {
-                if (!isset($savedSettings[$field])) {
-                    $savedSettings[$field] = false;
-                }
-            }
-            
             return array_merge($defaultSettings, $savedSettings);
         }
 
