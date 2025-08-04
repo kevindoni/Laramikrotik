@@ -52,16 +52,16 @@ class CompanySettingsController extends Controller
 
         // Debug: Log checkbox values
         \Log::info('Checkbox values:', [
-            'show_bank_bca' => $request->has('show_bank_bca'),
-            'show_bank_mandiri' => $request->has('show_bank_mandiri'),
-            'show_bank_bni' => $request->has('show_bank_bni'),
-            'show_bank_bri' => $request->has('show_bank_bri'),
-            'show_ewallet_dana' => $request->has('show_ewallet_dana'),
-            'show_ewallet_ovo' => $request->has('show_ewallet_ovo'),
-            'show_ewallet_gopay' => $request->has('show_ewallet_gopay'),
-            'show_ewallet_shopeepay' => $request->has('show_ewallet_shopeepay'),
-            'show_ewallet_linkaja' => $request->has('show_ewallet_linkaja'),
-            'show_manual_payment' => $request->has('show_manual_payment'),
+            'show_bank_bca' => $request->input('show_bank_bca', false),
+            'show_bank_mandiri' => $request->input('show_bank_mandiri', false),
+            'show_bank_bni' => $request->input('show_bank_bni', false),
+            'show_bank_bri' => $request->input('show_bank_bri', false),
+            'show_ewallet_dana' => $request->input('show_ewallet_dana', false),
+            'show_ewallet_ovo' => $request->input('show_ewallet_ovo', false),
+            'show_ewallet_gopay' => $request->input('show_ewallet_gopay', false),
+            'show_ewallet_shopeepay' => $request->input('show_ewallet_shopeepay', false),
+            'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
+            'show_manual_payment' => $request->input('show_manual_payment', false),
         ]);
 
         $settings = [
@@ -86,17 +86,17 @@ class CompanySettingsController extends Controller
             'footer_note' => $request->footer_note,
             'developer_by' => $request->developer_by,
             'github_url' => $request->github_url,
-            // Checkbox settings
-            'show_bank_bca' => $request->has('show_bank_bca'),
-            'show_bank_mandiri' => $request->has('show_bank_mandiri'),
-            'show_bank_bni' => $request->has('show_bank_bni'),
-            'show_bank_bri' => $request->has('show_bank_bri'),
-            'show_ewallet_dana' => $request->has('show_ewallet_dana'),
-            'show_ewallet_ovo' => $request->has('show_ewallet_ovo'),
-            'show_ewallet_gopay' => $request->has('show_ewallet_gopay'),
-            'show_ewallet_shopeepay' => $request->has('show_ewallet_shopeepay'),
-            'show_ewallet_linkaja' => $request->has('show_ewallet_linkaja'),
-            'show_manual_payment' => $request->has('show_manual_payment'),
+            // Checkbox settings - use input() method to get boolean values
+            'show_bank_bca' => $request->input('show_bank_bca', false),
+            'show_bank_mandiri' => $request->input('show_bank_mandiri', false),
+            'show_bank_bni' => $request->input('show_bank_bni', false),
+            'show_bank_bri' => $request->input('show_bank_bri', false),
+            'show_ewallet_dana' => $request->input('show_ewallet_dana', false),
+            'show_ewallet_ovo' => $request->input('show_ewallet_ovo', false),
+            'show_ewallet_gopay' => $request->input('show_ewallet_gopay', false),
+            'show_ewallet_shopeepay' => $request->input('show_ewallet_shopeepay', false),
+            'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
+            'show_manual_payment' => $request->input('show_manual_payment', false),
         ];
 
         // Debug: Log saved settings
