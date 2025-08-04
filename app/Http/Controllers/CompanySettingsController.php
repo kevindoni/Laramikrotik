@@ -54,6 +54,9 @@ class CompanySettingsController extends Controller
 
 
         
+        // Debug: Log all request data
+        \Log::info('All request data:', $request->all());
+        
         $settings = [
             'company_name' => $request->company_name,
             'address' => $request->address,
@@ -88,6 +91,9 @@ class CompanySettingsController extends Controller
             'show_ewallet_linkaja' => $request->input('show_ewallet_linkaja', false),
             'show_manual_payment' => $request->has('show_manual_payment'),
         ];
+        
+        // Debug: Log saved settings
+        \Log::info('Saved settings:', $settings);
 
 
         
