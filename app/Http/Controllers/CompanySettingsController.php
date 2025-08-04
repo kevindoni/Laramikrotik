@@ -50,6 +50,20 @@ class CompanySettingsController extends Controller
             'show_manual_payment' => 'nullable|boolean',
         ]);
 
+        // Debug: Log checkbox values
+        \Log::info('Checkbox values:', [
+            'show_bank_bca' => $request->has('show_bank_bca'),
+            'show_bank_mandiri' => $request->has('show_bank_mandiri'),
+            'show_bank_bni' => $request->has('show_bank_bni'),
+            'show_bank_bri' => $request->has('show_bank_bri'),
+            'show_ewallet_dana' => $request->has('show_ewallet_dana'),
+            'show_ewallet_ovo' => $request->has('show_ewallet_ovo'),
+            'show_ewallet_gopay' => $request->has('show_ewallet_gopay'),
+            'show_ewallet_shopeepay' => $request->has('show_ewallet_shopeepay'),
+            'show_ewallet_linkaja' => $request->has('show_ewallet_linkaja'),
+            'show_manual_payment' => $request->has('show_manual_payment'),
+        ]);
+
         $settings = [
             'company_name' => $request->company_name,
             'address' => $request->address,
@@ -85,6 +99,9 @@ class CompanySettingsController extends Controller
             'show_manual_payment' => $request->has('show_manual_payment'),
         ];
 
+        // Debug: Log saved settings
+        \Log::info('Saved settings:', $settings);
+        
         Storage::put('company_settings.json', json_encode($settings, JSON_PRETTY_PRINT));
 
         return redirect()->route('company-settings.index')->with('success', 'Company settings updated successfully!');
