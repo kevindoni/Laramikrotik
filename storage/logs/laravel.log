@@ -25,3 +25,21 @@
 [2025-08-06 14:24:26] local.INFO: Attempting to get interface data from MikroTik with quick connection  
 [2025-08-06 14:24:26] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
 [2025-08-06 14:24:26] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:29:24] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:25] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:25] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:29:25] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:29:25] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:29:27] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:27] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:29:27] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:29:27] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:29:36] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:36] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:36] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:29:37] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:29:37] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:29:38] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:29:39] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:29:39] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:29:39] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  

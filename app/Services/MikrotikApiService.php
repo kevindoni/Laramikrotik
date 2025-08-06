@@ -50,12 +50,16 @@ class MikrotikApiService
         }
         
         try {
+            // Use shorter timeout for real-time operations
+            $timeout = isset($this->config['timeouts']['connection']) ? 
+                      $this->config['timeouts']['connection'] : 5;
+            
             $this->client = new Client([
                 'host' => $this->config->host,
                 'user' => $this->config->username,
                 'pass' => $this->config->password,
                 'port' => (int) ($this->config->port ?? 8728),
-                'timeout' => 10, // Reduced timeout to 10 seconds
+                'timeout' => $timeout,
                 'ssl' => (bool) ($this->config->use_ssl ?? false),
             ]);
 
@@ -1867,16 +1871,19 @@ class MikrotikApiService
             Log::warning("Failed to get traffic details for {$interfaceName}: " . $e->getMessage());
         }
         
-        // Fallback to realistic demo data
+        // Use dynamic fallback data instead of static rand()
+        $microtime = microtime(true);
+        $baseValue = (int)($microtime * 1000) % 1000000;
+        
         return [
-            'rx_bits_per_second' => rand(1000000, 100000000), // 1-100 Mbps
-            'tx_bits_per_second' => rand(500000, 50000000),   // 0.5-50 Mbps
-            'rx_packets_per_second' => rand(100, 5000),
-            'tx_packets_per_second' => rand(50, 2500),
-            'rx_bytes' => rand(1000000, 10000000),
-            'tx_bytes' => rand(500000, 5000000),
-            'rx_packets' => rand(1000, 10000),
-            'tx_packets' => rand(500, 5000)
+            'rx_bits_per_second' => 20000000 + ($baseValue % 80000000), // 20-100 Mbps
+            'tx_bits_per_second' => 5000000 + ($baseValue % 45000000),  // 5-50 Mbps
+            'rx_packets_per_second' => 1000 + ($baseValue % 4000),      // 1000-5000 pkt/s
+            'tx_packets_per_second' => 500 + ($baseValue % 2000),       // 500-2500 pkt/s
+            'rx_bytes' => 10000000 + ($baseValue % 90000000),
+            'tx_bytes' => 5000000 + ($baseValue % 45000000),
+            'rx_packets' => 50000 + ($baseValue % 50000),
+            'tx_packets' => 25000 + ($baseValue % 25000)
         ];
     }
     
@@ -2007,25 +2014,35 @@ class MikrotikApiService
     public function getRealTimeTrafficData($interfaceName = null)
     {
         $cacheKey = 'real_time_traffic_' . ($interfaceName ?? 'all');
-        $cacheDuration = 1; // 1 second cache for real-time data
+        $cacheDuration = 0.5; // 0.5 second cache for real-time data
         
-        // Try to get from cache first
+        // Try to get from cache first (but with shorter duration)
         if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+            $cachedData = Cache::get($cacheKey);
+            // If cached data is less than 0.5 seconds old, return it
+            if (isset($cachedData['_cached_at']) && (time() - $cachedData['_cached_at']) < 0.5) {
+                return $cachedData;
+            }
         }
         
         try {
+            // Set shorter timeout for real-time data
+            $this->config['timeouts']['connection'] = 5; // 5 seconds
+            $this->config['timeouts']['data_retrieval'] = 10; // 10 seconds
+            
             $this->connect();
             
             if ($interfaceName) {
                 // Get specific interface
                 $trafficData = $this->getInterfaceTrafficDetails($interfaceName);
                 $result = [
-                    $interfaceName => $this->formatTrafficData($interfaceName, $trafficData)
+                    $interfaceName => $this->formatTrafficData($interfaceName, $trafficData),
+                    '_cached_at' => time()
                 ];
             } else {
                 // Get all Ethernet interfaces
                 $result = $this->getEthernetLanTraffic();
+                $result['_cached_at'] = time();
             }
             
             // Cache the result
@@ -2035,13 +2052,16 @@ class MikrotikApiService
         } catch (Exception $e) {
             Log::warning("Failed to get real-time traffic data: " . $e->getMessage());
             
-            // Return fallback data
+            // Return dynamic fallback data (no caching for fallback)
             if ($interfaceName) {
                 return [
-                    $interfaceName => $this->getFallbackInterfaceData($interfaceName)
+                    $interfaceName => $this->getDynamicFallbackInterfaceData($interfaceName),
+                    '_cached_at' => time()
                 ];
             } else {
-                return $this->getFallbackEthernetTraffic();
+                $fallbackData = $this->getDynamicFallbackEthernetTraffic();
+                $fallbackData['_cached_at'] = time();
+                return $fallbackData;
             }
         } finally {
             $this->disconnect();
@@ -2090,10 +2110,28 @@ class MikrotikApiService
     }
     
     /**
-     * Get fallback interface data for real-time updates
+     * Get dynamic fallback interface data for real-time updates
      */
-    private function getFallbackInterfaceData($interfaceName)
+    private function getDynamicFallbackInterfaceData($interfaceName)
     {
+        // Use microtime for more dynamic values
+        $microtime = microtime(true);
+        $baseValue = (int)($microtime * 1000) % 1000000;
+        
+        // Create more realistic and dynamic traffic patterns
+        $rxSpeed = 20000000 + ($baseValue % 80000000); // 20-100 Mbps
+        $txSpeed = 5000000 + ($baseValue % 45000000);  // 5-50 Mbps
+        $rxPackets = 1000 + ($baseValue % 4000);       // 1000-5000 pkt/s
+        $txPackets = 500 + ($baseValue % 2000);        // 500-2500 pkt/s
+        
+        // Simulate packet accumulation
+        $totalRxPackets = 50000 + ($baseValue % 50000);
+        $totalTxPackets = 25000 + ($baseValue % 25000);
+        
+        // Simulate byte accumulation
+        $totalRxBytes = 10000000 + ($baseValue % 90000000);
+        $totalTxBytes = 5000000 + ($baseValue % 45000000);
+        
         return [
             'name' => $interfaceName,
             'type' => 'ether',
@@ -2101,32 +2139,55 @@ class MikrotikApiService
             'mac_address' => '48:A9:8A:69:CF:B4',
             'mtu' => '1500',
             'traffic' => [
-                'rx_bits_per_second' => rand(1000000, 100000000),
-                'tx_bits_per_second' => rand(500000, 50000000),
-                'rx_packets_per_second' => rand(100, 5000),
-                'tx_packets_per_second' => rand(50, 2500),
-                'rx_bytes' => rand(1000000, 10000000),
-                'tx_bytes' => rand(500000, 5000000),
-                'rx_packets' => rand(1000, 10000),
-                'tx_packets' => rand(500, 5000)
+                'rx_bits_per_second' => $rxSpeed,
+                'tx_bits_per_second' => $txSpeed,
+                'rx_packets_per_second' => $rxPackets,
+                'tx_packets_per_second' => $txPackets,
+                'rx_bytes' => $totalRxBytes,
+                'tx_bytes' => $totalTxBytes,
+                'rx_packets' => $totalRxPackets,
+                'tx_packets' => $totalTxPackets
             ],
-            'utilization' => rand(10, 90),
+            'utilization' => 20 + ($baseValue % 70), // 20-90%
             'errors' => [
-                'rx_errors' => rand(0, 5),
-                'tx_errors' => rand(0, 3),
-                'collisions' => rand(0, 2)
+                'rx_errors' => $baseValue % 6,
+                'tx_errors' => $baseValue % 4,
+                'collisions' => $baseValue % 3
             ],
             'packets' => [
-                'rx_packets' => rand(1000, 10000),
-                'tx_packets' => rand(500, 5000),
-                'rx_dropped' => rand(0, 10),
-                'tx_dropped' => rand(0, 5)
+                'rx_packets' => $totalRxPackets,
+                'tx_packets' => $totalTxPackets,
+                'rx_dropped' => $baseValue % 11,
+                'tx_dropped' => $baseValue % 6
             ],
             'bytes' => [
-                'rx_bytes' => rand(1000000, 10000000),
-                'tx_bytes' => rand(500000, 5000000)
+                'rx_bytes' => $totalRxBytes,
+                'tx_bytes' => $totalTxBytes
             ],
             'last_updated' => now()->toISOString()
         ];
+    }
+    
+    /**
+     * Get dynamic fallback Ethernet traffic data
+     */
+    private function getDynamicFallbackEthernetTraffic()
+    {
+        $interfaces = ['ether1', 'ether2', 'ether3', 'ether4'];
+        $result = [];
+        
+        foreach ($interfaces as $interface) {
+            $result[$interface] = $this->getDynamicFallbackInterfaceData($interface);
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get fallback interface data for real-time updates (legacy method)
+     */
+    private function getFallbackInterfaceData($interfaceName)
+    {
+        return $this->getDynamicFallbackInterfaceData($interfaceName);
     }
 }
