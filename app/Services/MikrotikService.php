@@ -463,9 +463,9 @@ class MikrotikService
                 'host' => $this->setting->host ?? 'unknown'
             ]);
             
+            // Try to get secrets with a simple query and limit
             $query = new Query('/ppp/secret/print');
-            // Note: RouterOS API for /ppp/secret/print doesn't support count/from parameters
-            // We'll get all secrets and handle pagination in PHP if needed
+            $query->equal('limit', '5'); // Limit to first 5 secrets
             
             $secrets = $this->client->query($query)->read();
             
@@ -583,11 +583,11 @@ class MikrotikService
                 }
                 
                 // Calculate progressive timeout based on attempt and secret count
-                $baseTimeout = 30; // Start with 30 seconds
+                $baseTimeout = 60; // Start with 60 seconds
                 $timeoutMultiplier = $attempt; // Increase timeout with each attempt
-                $countMultiplier = max(1, ceil($secretCount / 10)); // Add time for every 10 secrets
+                $countMultiplier = max(1, ceil($secretCount / 5)); // Add time for every 5 secrets
                 $timeout = $baseTimeout * $timeoutMultiplier * $countMultiplier;
-                $timeout = min($timeout, 300); // Cap at 5 minutes maximum
+                $timeout = min($timeout, 600); // Cap at 10 minutes maximum
                 
                 // Set progressive timeout for data retrieval operations
                 if ($this->client && method_exists($this->client, 'setTimeout')) {
@@ -602,29 +602,33 @@ class MikrotikService
                     'chunk_size' => $chunkSize
                 ]);
                 
-                // If chunking is requested and we have many secrets, try chunked approach
-                if ($chunkSize && $secretCount > $chunkSize) {
-                    logger()->info('Using chunked retrieval approach', [
-                        'total_secrets' => $secretCount,
-                        'chunk_size' => $chunkSize
-                    ]);
-                    
-                    return $this->getSecretsInChunks($chunkSize, $secretCount, $timeout);
-                }
+                // Use batch retrieval for better reliability
+                logger()->info('Using batch retrieval approach', [
+                    'total_secrets' => $secretCount
+                ]);
                 
-                // Try optimized query with minimal data first for faster response
+                return $this->getPppSecretsBatch(0, $secretCount);
+                
+                // Try simple query without proplist first
                 try {
                     $query = new Query('/ppp/secret/print');
-                    $query->equal('proplist', 'name,password,profile,service,comment,disabled,.id');
                     
                     $secrets = $this->client->query($query)->read();
+                    
+                    // Check if response contains error
+                    if (isset($secrets['after']['message'])) {
+                        logger()->error('MikroTik query error', [
+                            'error' => $secrets['after']['message']
+                        ]);
+                        throw new Exception('MikroTik query error: ' . $secrets['after']['message']);
+                    }
                     
                     // Log successful retrieval for debugging
                     logger()->info('Successfully retrieved PPP secrets from MikroTik', [
                         'count' => count($secrets),
                         'host' => $this->setting->host ?? 'unknown',
                         'attempt' => $attempt,
-                        'method' => 'optimized_proplist'
+                        'method' => 'simple_query'
                     ]);
                     
                     return $secrets;
@@ -710,74 +714,45 @@ class MikrotikService
      */
     private function getSecretsInChunks($chunkSize, $totalCount, $timeout)
     {
-        $allSecrets = [];
-        $processed = 0;
-        
         logger()->info('Starting chunked secret retrieval', [
             'chunk_size' => $chunkSize,
             'total_count' => $totalCount,
             'timeout' => $timeout
         ]);
         
-        while ($processed < $totalCount) {
-            try {
-                // Set shorter timeout for each chunk
-                $chunkTimeout = min($timeout, 60); // Max 60 seconds per chunk
-                if ($this->client && method_exists($this->client, 'setTimeout')) {
-                    $this->client->setTimeout($chunkTimeout);
-                }
-                
-                // Get minimal data for this chunk
-                $query = new Query('/ppp/secret/print');
-                $query->equal('proplist', 'name,password,profile,disabled,.id');
-                
-                // Note: RouterOS doesn't support LIMIT/OFFSET for /ppp/secret/print
-                // So we get all and handle chunking in PHP
-                $secrets = $this->client->query($query)->read();
-                
-                // Slice the array to get our chunk
-                $chunk = array_slice($secrets, $processed, $chunkSize);
-                
-                if (empty($chunk)) {
-                    break; // No more data
-                }
-                
-                $allSecrets = array_merge($allSecrets, $chunk);
-                $processed += count($chunk);
-                
-                logger()->info('Chunk processed', [
-                    'chunk_secrets' => count($chunk),
-                    'total_processed' => $processed,
-                    'remaining' => max(0, $totalCount - $processed)
-                ]);
-                
-                // If we got all secrets in this single query, use the complete result
-                if (count($secrets) == $totalCount) {
-                    $allSecrets = $secrets; // Use the complete result
-                    break;
-                }
-                
-                // Small delay between chunks to avoid overwhelming the router
-                if ($processed < $totalCount) {
-                    usleep(500000); // 0.5 second delay
-                }
-                
-            } catch (Exception $e) {
-                logger()->error('Chunk retrieval failed', [
-                    'processed' => $processed,
-                    'chunk_size' => $chunkSize,
-                    'error' => $e->getMessage()
-                ]);
-                throw $e;
+        try {
+            // Set longer timeout for the operation
+            if ($this->client && method_exists($this->client, 'setTimeout')) {
+                $this->client->setTimeout(max($timeout, 300)); // Minimum 5 minutes
             }
+            
+            // Try to get secrets without proplist first
+            $query = new Query('/ppp/secret/print');
+            
+            $secrets = $this->client->query($query)->read();
+            
+            // Check if response contains error
+            if (isset($secrets['after']['message'])) {
+                logger()->error('MikroTik query error', [
+                    'error' => $secrets['after']['message']
+                ]);
+                throw new Exception('MikroTik query error: ' . $secrets['after']['message']);
+            }
+            
+            logger()->info('Chunked retrieval completed', [
+                'total_retrieved' => count($secrets),
+                'expected' => $totalCount
+            ]);
+            
+            return $secrets;
+            
+        } catch (Exception $e) {
+            logger()->error('Chunk retrieval failed', [
+                'chunk_size' => $chunkSize,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
-        
-        logger()->info('Chunked retrieval completed', [
-            'total_retrieved' => count($allSecrets),
-            'expected' => $totalCount
-        ]);
-        
-        return $allSecrets;
     }
     /**
      * Create a PPP profile on Mikrotik.

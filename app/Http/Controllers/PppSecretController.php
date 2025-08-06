@@ -795,6 +795,12 @@ class PppSecretController extends Controller
             // Get PPP secrets from MikroTik with timeout and retry logic
             $mikrotikSecrets = $this->getMikrotikSecretsWithRetry();
             
+            // Debug logging
+            logger()->info('MikroTik secrets retrieved', [
+                'count' => count($mikrotikSecrets),
+                'first_secret' => count($mikrotikSecrets) > 0 ? $mikrotikSecrets[0] : null
+            ]);
+            
             if (empty($mikrotikSecrets)) {
                 return redirect()->route('ppp-secrets.index')
                     ->with('warning', '⚠️ No PPP secrets found on MikroTik router. The router may be empty or all secrets may be filtered out.');
@@ -811,10 +817,17 @@ class PppSecretController extends Controller
             $skipped = 0;
             $errors = [];
             
-            foreach ($mikrotikSecrets as $mikrotikSecret) {
+            foreach ($mikrotikSecrets as $index => $mikrotikSecret) {
                 try {
+                    logger()->info('Processing secret', [
+                        'index' => $index,
+                        'secret_name' => $mikrotikSecret['name'] ?? 'no_name',
+                        'secret_data' => $mikrotikSecret
+                    ]);
+                    
                     // Skip if no username
                     if (empty($mikrotikSecret['name'])) {
+                        logger()->warning('Skipping secret with no name', ['index' => $index]);
                         $skipped++;
                         continue;
                     }
@@ -861,9 +874,17 @@ class PppSecretController extends Controller
                     
                     if ($existingSecret) {
                         // Update existing secret
+                        logger()->info('Updating existing secret', [
+                            'username' => $username,
+                            'secret_id' => $existingSecret->id
+                        ]);
                         $existingSecret->update($secretData);
                         $updated++;
                     } else {
+                        logger()->info('Creating new secret', [
+                            'username' => $username,
+                            'profile_name' => $profileName
+                        ]);
                         // Create individual customer for this PPP secret
                         $customerName = ucfirst($username); // Capitalize the username as customer name
                         $customerEmail = isset($mikrotikSecret['comment']) && 
@@ -882,12 +903,21 @@ class PppSecretController extends Controller
                             ]
                         );
                         
+                        logger()->info('Customer created/found', [
+                            'customer_id' => $customer->id,
+                            'customer_name' => $customer->name
+                        ]);
+                        
                         // Create new secret with individual customer
                         $secretData['customer_id'] = $customer->id;
                         $secretData['installation_date'] = now();
                         $secretData['due_date'] = now()->addMonth();
                         
-                        PppSecret::create($secretData);
+                        $newSecret = PppSecret::create($secretData);
+                        logger()->info('Secret created successfully', [
+                            'secret_id' => $newSecret->id,
+                            'username' => $newSecret->username
+                        ]);
                         $created++;
                     }
                     

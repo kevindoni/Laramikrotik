@@ -129,6 +129,32 @@
         margin-bottom: 0;
     }
 }
+
+/* Basic table styling */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,.075);
+}
+
+.no-data-row td {
+    border: none !important;
+    background: transparent !important;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
 </style>
 @endpush
 
@@ -544,7 +570,7 @@
                             </td>
                         </tr>
                         @empty
-                        <tr>
+                        <tr class="no-data-row">
                             <td colspan="7" class="text-center py-4">
                                 <div class="text-muted">
                                     <i class="fas fa-inbox fa-3x mb-3"></i>
@@ -576,53 +602,21 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Initialize DataTable with proper configuration
-    $('#profilesTable').DataTable({
-        "responsive": true,
-        "lengthChange": true,
-        "autoWidth": false,
-        "order": [[ 1, "asc" ]],
-        "pageLength": 25,
-        "language": {
-            "search": "Search Profiles:",
-            "lengthMenu": "Show _MENU_ profiles per page",
-            "info": "Showing _START_ to _END_ of _TOTAL_ profiles",
-            "infoEmpty": "No profiles found",
-            "infoFiltered": "(filtered from _MAX_ total profiles)",
-            "zeroRecords": "No matching profiles found",
-            "paginate": {
-                "first": "First",
-                "last": "Last", 
-                "next": "Next",
-                "previous": "Previous"
-            }
-        },
-        "buttons": [
-            {
-                extend: 'copy',
-                text: '<i class="fas fa-copy"></i> Copy',
-                className: 'btn btn-secondary btn-sm'
-            },
-            {
-                extend: 'excel',
-                text: '<i class="fas fa-file-excel"></i> Excel',
-                className: 'btn btn-success btn-sm'
-            },
-            {
-                extend: 'pdf',
-                text: '<i class="fas fa-file-pdf"></i> PDF',
-                className: 'btn btn-danger btn-sm'
-            },
-            {
-                extend: 'print',
-                text: '<i class="fas fa-print"></i> Print',
-                className: 'btn btn-info btn-sm'
-            }
-        ],
-        "dom": '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>><"row"<"col-md-12"B>>',
-        "columnDefs": [
-            { "orderable": false, "targets": [0, -1] } // Disable sorting on checkbox and Action column
-        ]
+    // Initialize basic table functionality without DataTables
+    console.log('Initializing basic table functionality...');
+    
+    // Add basic table styling
+    $('#profilesTable').addClass('table-striped');
+    
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
+    
+    // Simple search functionality
+    $('input[name="search"]').on('keyup', function() {
+        var value = $(this).val().toLowerCase();
+        $('#profilesTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
     });
 
     // Show/hide bulk actions based on checkbox selection

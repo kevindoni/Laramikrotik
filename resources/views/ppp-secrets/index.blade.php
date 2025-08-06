@@ -53,34 +53,30 @@
     border-color: #dee2e6;
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-    padding: 0.375rem 0.75rem;
-    margin-left: 0.125rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
+/* Basic table styling */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.02);
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,.075);
 }
 
-.dataTables_wrapper .dataTables_paginate .paginate_button.current {
-    background: #007bff;
-    border-color: #007bff;
-    color: white !important;
+.no-data-row td {
+    border: none !important;
+    background: transparent !important;
 }
 
-.dataTables_filter input {
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    padding: 0.375rem 0.75rem;
-}
-
-.dataTables_length select {
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    padding: 0.375rem 0.75rem;
+/* Responsive table */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
 }
 
 .card {
@@ -315,7 +311,7 @@
         </div>
     </div>
 
-    <!-- DataTable -->
+                <!-- PPP Secrets Table -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">
@@ -331,7 +327,7 @@
         <div class="card-body">
             @if($pppSecrets->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <table class="table table-bordered table-hover table-striped" id="secretsTable" width="100%" cellspacing="0">
                         <thead class="thead-light">
                             <tr>
                                 <th width="40"><input type="checkbox" id="selectAll"></th>
@@ -451,9 +447,6 @@
                     <i class="fas fa-key fa-3x text-muted mb-3"></i>
                     <h5 class="text-muted">No PPP Secrets Found</h5>
                     <p class="text-muted">Try syncing from MikroTik or add a new secret.</p>
-                    <button type="button" class="btn btn-success" id="syncFromMikrotikBtn2">
-                        <i class="fas fa-sync"></i> Sync from MikroTik
-                    </button>
                 </div>
             @endif
         </div>
@@ -469,6 +462,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips
     if (typeof $ !== 'undefined') {
         $('[data-toggle="tooltip"]').tooltip();
+        
+        // Simple search functionality
+        $('input[name="search"]').on('keyup', function() {
+            var value = $(this).val().toLowerCase();
+            $('#secretsTable tbody tr').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
     }
     
     // Sync from MikroTik button
