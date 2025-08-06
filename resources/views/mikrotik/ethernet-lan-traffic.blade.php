@@ -34,6 +34,25 @@
     .chart-container {
         min-height: 300px;
     }
+    .connection-status {
+        margin-left: 15px;
+    }
+    .connection-status .badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+    .traffic-card.updating {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+    .real-time-indicator {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
 </style>
 @endsection
 
@@ -45,8 +64,14 @@
             <i class="fas fa-network-wired"></i> Ethernet LAN Traffic Monitoring
         </h1>
         <div>
+            <span class="text-muted mr-2">
+                <i class="fas fa-clock"></i> Last refresh: <span id="lastRefreshTime">{{ now()->format('H:i:s') }}</span>
+            </span>
             <button class="btn btn-primary btn-sm" onclick="refreshData()">
                 <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-success btn-sm" id="toggleMonitoringBtn" onclick="toggleRealTimeMonitoring()">
+                <i class="fas fa-pause"></i> Pause
             </button>
             <button class="btn btn-info btn-sm" onclick="exportData()">
                 <i class="fas fa-download"></i> Export
@@ -76,12 +101,12 @@
     <div class="row mb-4">
         @foreach($ethernetTraffic as $interfaceName => $interface)
         <div class="col-xl-6 col-lg-6 col-md-12 mb-4">
-            <div class="card traffic-card">
+            <div class="card traffic-card" data-interface="{{ $interfaceName }}">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas fa-ethernet"></i> {{ $interface['name'] }}
                     </h6>
-                    <span class="badge badge-{{ $interface['status'] === 'active' ? 'success' : 'danger' }}">
+                    <span class="badge badge-{{ $interface['status'] === 'active' ? 'success' : 'danger' }} status-badge">
                         {{ ucfirst($interface['status']) }}
                     </span>
                 </div>
@@ -102,10 +127,10 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
                             <small class="traffic-stat">Utilization</small>
-                            <small class="traffic-value">{{ $interface['utilization'] }}%</small>
+                            <small class="traffic-value utilization-text">{{ $interface['utilization'] }}%</small>
                         </div>
                         <div class="progress">
-                            <div class="progress-bar bg-{{ $interface['utilization'] > 80 ? 'danger' : ($interface['utilization'] > 60 ? 'warning' : 'success') }}" 
+                            <div class="progress-bar bg-{{ $interface['utilization'] > 80 ? 'danger' : ($interface['utilization'] > 60 ? 'warning' : 'success') }} utilization-bar" 
                                  style="width: {{ $interface['utilization'] }}%"></div>
                         </div>
                     </div>
@@ -115,15 +140,15 @@
                         <div class="col-md-6">
                             <div class="text-center p-2 border rounded">
                                 <small class="traffic-stat">Download</small><br>
-                                <span class="traffic-value">{{ number_format($interface['traffic']['rx_bits_per_second'] / 1000000, 1) }} Mbps</span><br>
-                                <small class="text-muted">{{ number_format($interface['traffic']['rx_packets_per_second']) }} pkt/s</small>
+                                <span class="traffic-value download-speed">{{ number_format($interface['traffic']['rx_bits_per_second'] / 1000000, 1) }} Mbps</span><br>
+                                <small class="text-muted rx-packets">{{ number_format($interface['traffic']['rx_packets_per_second']) }} pkt/s</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-center p-2 border rounded">
                                 <small class="traffic-stat">Upload</small><br>
-                                <span class="traffic-value">{{ number_format($interface['traffic']['tx_bits_per_second'] / 1000000, 1) }} Mbps</span><br>
-                                <small class="text-muted">{{ number_format($interface['traffic']['tx_packets_per_second']) }} pkt/s</small>
+                                <span class="traffic-value upload-speed">{{ number_format($interface['traffic']['tx_bits_per_second'] / 1000000, 1) }} Mbps</span><br>
+                                <small class="text-muted tx-packets">{{ number_format($interface['traffic']['tx_packets_per_second']) }} pkt/s</small>
                             </div>
                         </div>
                     </div>
@@ -149,6 +174,16 @@
                             </span>
                         </div>
                     </div>
+                    
+                    <!-- Total Errors -->
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <small class="traffic-stat">Total Errors:</small><br>
+                            <span class="traffic-value error-count text-{{ ($interface['errors']['rx_errors'] + $interface['errors']['tx_errors'] + $interface['errors']['collisions']) > 0 ? 'danger' : 'success' }}">
+                                {{ number_format($interface['errors']['rx_errors'] + $interface['errors']['tx_errors'] + $interface['errors']['collisions']) }}
+                            </span>
+                        </div>
+                    </div>
 
                     <!-- Packet Stats -->
                     <div class="row mt-3">
@@ -165,7 +200,7 @@
                     <!-- Last Updated -->
                     <div class="mt-3 text-center">
                         <small class="text-muted">
-                            <i class="fas fa-clock"></i> Last updated: {{ \Carbon\Carbon::parse($interface['last_updated'])->diffForHumans() }}
+                            <i class="fas fa-clock"></i> Last updated: <span class="last-updated">{{ \Carbon\Carbon::parse($interface['last_updated'])->format('H:i:s') }}</span>
                         </small>
                     </div>
                 </div>
@@ -271,13 +306,71 @@
 <script>
 let trafficHistoryChart;
 
+// Real-time monitoring variables
+let refreshInterval;
+let isRefreshing = false;
+let consecutiveErrors = 0;
+const MAX_CONSECUTIVE_ERRORS = 5;
+const REFRESH_INTERVAL = 2000; // 2 seconds
+const ERROR_BACKOFF_MULTIPLIER = 2;
+
+// Initialize real-time monitoring
 document.addEventListener('DOMContentLoaded', function() {
     initializeTrafficChart();
     initializeDataTable();
     
-    // Auto-refresh every 30 seconds
-    setInterval(refreshData, 30000);
+    // Start real-time monitoring
+    startRealTimeMonitoring();
+    
+    // Add connection status indicator
+    addConnectionStatusIndicator();
 });
+
+function startRealTimeMonitoring() {
+    // Clear any existing interval
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    
+    // Start new interval
+    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+    console.log('Real-time monitoring started with 2-second interval');
+}
+
+function stopRealTimeMonitoring() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+        console.log('Real-time monitoring stopped');
+    }
+}
+
+function addConnectionStatusIndicator() {
+    const header = document.querySelector('.d-sm-flex.align-items-center.justify-content-between');
+    if (header) {
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'connection-status';
+        statusDiv.innerHTML = `
+            <span class="badge badge-success" id="connectionStatus">
+                <i class="fas fa-wifi"></i> Connected
+            </span>
+        `;
+        header.appendChild(statusDiv);
+    }
+}
+
+function updateConnectionStatus(isConnected, message = '') {
+    const statusElement = document.getElementById('connectionStatus');
+    if (statusElement) {
+        if (isConnected) {
+            statusElement.className = 'badge badge-success';
+            statusElement.innerHTML = '<i class="fas fa-wifi"></i> Connected';
+        } else {
+            statusElement.className = 'badge badge-danger';
+            statusElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message || 'Disconnected'}`;
+        }
+    }
+}
 
 function initializeTrafficChart() {
     const ctx = document.getElementById('trafficHistoryChart').getContext('2d');
@@ -381,33 +474,195 @@ function initializeDataTable() {
 }
 
 function refreshData() {
+    // Prevent multiple simultaneous requests
+    if (isRefreshing) {
+        console.log('Refresh already in progress, skipping...');
+        return;
+    }
+    
+    isRefreshing = true;
+    
     // Show loading indicator
     const refreshBtn = document.querySelector('button[onclick="refreshData()"]');
     const originalText = refreshBtn.innerHTML;
     refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
     refreshBtn.disabled = true;
     
-    // Fetch new data
-    fetch('/mikrotik/ethernet-lan-traffic?json=1')
-        .then(response => response.json())
+    // Fetch new data via AJAX
+    fetch('/real-time-traffic')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
-                // Update the page with new data
-                location.reload();
+                // Update traffic data without page reload
+                updateTrafficData(data.ethernetTraffic);
+                updateLastRefreshTime();
+                
+                // Reset error counter on success
+                consecutiveErrors = 0;
+                updateConnectionStatus(true);
+                
+                // Reset to normal interval
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+                }
             } else {
-                console.error('Failed to refresh data:', data.message);
-                alert('Failed to refresh data: ' + data.message);
+                throw new Error(data.message || 'Unknown error');
             }
         })
         .catch(error => {
             console.error('Error refreshing data:', error);
-            alert('Error refreshing data. Please try again.');
+            consecutiveErrors++;
+            
+            // Update connection status
+            updateConnectionStatus(false, `Error: ${error.message}`);
+            
+            // Implement exponential backoff for errors
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                const backoffInterval = REFRESH_INTERVAL * Math.pow(ERROR_BACKOFF_MULTIPLIER, Math.min(consecutiveErrors - MAX_CONSECUTIVE_ERRORS, 3));
+                console.warn(`Too many consecutive errors (${consecutiveErrors}), backing off to ${backoffInterval}ms`);
+                
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = setInterval(refreshData, backoffInterval);
+                }
+            }
+            
+            // Don't show alert for auto-refresh, only log
+            if (!refreshBtn.disabled) {
+                console.warn('Auto-refresh failed, will retry in 2 seconds');
+            }
         })
         .finally(() => {
-            // Restore button
-            refreshBtn.innerHTML = originalText;
-            refreshBtn.disabled = false;
+            isRefreshing = false;
+            
+            // Restore button only if it was manually clicked
+            if (refreshBtn.disabled) {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
         });
+}
+
+function updateTrafficData(ethernetTraffic) {
+    // Update each interface card with new data
+    Object.keys(ethernetTraffic).forEach(interfaceName => {
+        const interface = ethernetTraffic[interfaceName];
+        const card = document.querySelector(`[data-interface="${interfaceName}"]`);
+        
+        if (card) {
+            // Add updating effect
+            card.classList.add('updating');
+            
+            // Remove updating effect after animation
+            setTimeout(() => {
+                card.classList.remove('updating');
+            }, 300);
+            // Update utilization
+            const utilizationBar = card.querySelector('.utilization-bar');
+            const utilizationText = card.querySelector('.utilization-text');
+            if (utilizationBar && utilizationText) {
+                utilizationBar.style.width = `${interface.utilization}%`;
+                utilizationText.textContent = `${interface.utilization}%`;
+            }
+            
+            // Update download speed
+            const downloadSpeed = card.querySelector('.download-speed');
+            if (downloadSpeed) {
+                downloadSpeed.textContent = `${(interface.traffic.rx_bits_per_second / 1000000).toFixed(1)} Mbps`;
+            }
+            
+            // Update upload speed
+            const uploadSpeed = card.querySelector('.upload-speed');
+            if (uploadSpeed) {
+                uploadSpeed.textContent = `${(interface.traffic.tx_bits_per_second / 1000000).toFixed(1)} Mbps`;
+            }
+            
+            // Update packet rates
+            const rxPackets = card.querySelector('.rx-packets');
+            const txPackets = card.querySelector('.tx-packets');
+            if (rxPackets) rxPackets.textContent = interface.traffic.rx_packets_per_second;
+            if (txPackets) txPackets.textContent = interface.traffic.tx_packets_per_second;
+            
+            // Update error counts
+            const errorCount = card.querySelector('.error-count');
+            if (errorCount) {
+                const totalErrors = interface.errors.rx_errors + interface.errors.tx_errors + interface.errors.collisions;
+                errorCount.textContent = totalErrors;
+            }
+            
+            // Update status badge
+            const statusBadge = card.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `badge badge-${interface.status === 'active' ? 'success' : 'danger'} status-badge`;
+                statusBadge.textContent = interface.status.charAt(0).toUpperCase() + interface.status.slice(1);
+            }
+            
+            // Update last updated time
+            const lastUpdated = card.querySelector('.last-updated');
+            if (lastUpdated) {
+                lastUpdated.textContent = new Date(interface.last_updated).toLocaleTimeString();
+            }
+        }
+    });
+    
+    // Update summary table
+    updateSummaryTable(ethernetTraffic);
+}
+
+function updateSummaryTable(ethernetTraffic) {
+    const tableBody = document.querySelector('#trafficSummaryTable tbody');
+    if (tableBody) {
+        tableBody.innerHTML = '';
+        
+        Object.keys(ethernetTraffic).forEach(interfaceName => {
+            const interface = ethernetTraffic[interfaceName];
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${interface.name}</td>
+                <td><span class="badge badge-${interface.status === 'active' ? 'success' : 'danger'}">${interface.status}</span></td>
+                <td>${(interface.traffic.rx_bits_per_second / 1000000).toFixed(1)} Mbps</td>
+                <td>${(interface.traffic.tx_bits_per_second / 1000000).toFixed(1)} Mbps</td>
+                <td>${interface.utilization}%</td>
+                <td>${interface.errors.rx_errors + interface.errors.tx_errors + interface.errors.collisions}</td>
+                <td>${new Date(interface.last_updated).toLocaleTimeString()}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+    }
+}
+
+function updateLastRefreshTime() {
+    const refreshTimeElement = document.getElementById('lastRefreshTime');
+    if (refreshTimeElement) {
+        refreshTimeElement.textContent = new Date().toLocaleTimeString();
+    }
+}
+
+function toggleRealTimeMonitoring() {
+    const toggleBtn = document.getElementById('toggleMonitoringBtn');
+    const isMonitoring = refreshInterval !== null;
+    
+    if (isMonitoring) {
+        // Pause monitoring
+        stopRealTimeMonitoring();
+        toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+        toggleBtn.className = 'btn btn-warning btn-sm';
+        updateConnectionStatus(false, 'Paused');
+    } else {
+        // Resume monitoring
+        startRealTimeMonitoring();
+        toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        toggleBtn.className = 'btn btn-success btn-sm';
+        updateConnectionStatus(true);
+    }
 }
 
 function exportData() {

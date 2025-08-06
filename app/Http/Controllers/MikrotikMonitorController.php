@@ -743,76 +743,74 @@ class MikrotikMonitorController extends Controller
     }
 
     /**
-     * Show Ethernet LAN traffic monitoring
+     * Get real-time Ethernet LAN traffic data for AJAX requests
+     */
+    public function getRealTimeTrafficData(Request $request)
+    {
+        try {
+            $mikrotikService = new MikrotikApiService();
+            $interfaceName = $request->get('interface');
+            
+            $trafficData = $mikrotikService->getRealTimeTrafficData($interfaceName);
+            
+            return response()->json([
+                'status' => 'success',
+                'ethernetTraffic' => $trafficData,
+                'timestamp' => now()->toISOString()
+            ]);
+        } catch (Exception $e) {
+            Log::error('Failed to get real-time traffic data: ' . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to get real-time traffic data',
+                'ethernetTraffic' => $this->getFallbackEthernetTraffic()
+            ], 500);
+        }
+    }
+
+    /**
+     * Display Ethernet LAN traffic monitoring
      */
     public function ethernetLanTraffic(Request $request)
     {
         try {
-            if (!$this->initializeMikrotikService()) {
-                Log::warning('MikroTik service unavailable for Ethernet LAN traffic');
-                $data = [
-                    'ethernetTraffic' => $this->getFallbackEthernetTraffic(),
-                    'trafficHistory' => $this->getFallbackEthernetTrafficHistory()
-                ];
-                
-                if ($request->wantsJson()) {
-                    return response()->json(array_merge($data, [
-                        'status' => 'warning',
-                        'message' => 'MikroTik service unavailable. Showing demo data.'
-                    ]));
-                }
-                
-                return view('mikrotik.ethernet-lan-traffic', $data)
-                    ->with('warning', 'MikroTik service unavailable. Showing demo data.');
-            }
-
-            // Get real Ethernet LAN traffic data
-            $ethernetTraffic = [];
-            $trafficHistory = [];
+            $mikrotikService = new MikrotikApiService();
             
-            try {
-                $ethernetTraffic = $this->mikrotikService->getEthernetLanTraffic();
-                Log::info('Got Ethernet LAN traffic data for ' . count($ethernetTraffic) . ' interfaces');
-            } catch (\Exception $e) {
-                Log::warning('Failed to get real Ethernet LAN traffic data: ' . $e->getMessage());
-                $ethernetTraffic = $this->getFallbackEthernetTraffic();
-            }
+            // Use real-time data for better performance
+            $ethernetTraffic = $mikrotikService->getRealTimeTrafficData();
             
-            try {
-                $trafficHistory = $this->mikrotikService->getEthernetTrafficHistory();
-            } catch (\Exception $e) {
-                Log::warning('Failed to get Ethernet traffic history: ' . $e->getMessage());
-                $trafficHistory = $this->getFallbackEthernetTrafficHistory();
-            }
+            // Get traffic history for charts
+            $trafficHistory = $mikrotikService->getEthernetTrafficHistory();
             
-            $data = compact('ethernetTraffic', 'trafficHistory');
-            
-            if ($request->wantsJson()) {
-                return response()->json(array_merge($data, [
+            if ($request->has('json')) {
+                return response()->json([
                     'status' => 'success',
-                    'message' => 'Ethernet LAN traffic data retrieved successfully',
-                    'count' => count($ethernetTraffic)
-                ]));
+                    'ethernetTraffic' => $ethernetTraffic,
+                    'trafficHistory' => $trafficHistory,
+                    'timestamp' => now()->toISOString()
+                ]);
             }
             
-            return view('mikrotik.ethernet-lan-traffic', $data);
+            return view('mikrotik.ethernet-lan-traffic', compact('ethernetTraffic', 'trafficHistory'));
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Ethernet LAN traffic monitoring error: ' . $e->getMessage());
-            $data = [
-                'ethernetTraffic' => $this->getFallbackEthernetTraffic(),
-                'trafficHistory' => $this->getFallbackEthernetTrafficHistory()
-            ];
             
-            if ($request->wantsJson()) {
-                return response()->json(array_merge($data, [
+            $ethernetTraffic = $this->getFallbackEthernetTraffic();
+            $trafficHistory = $this->getFallbackEthernetTrafficHistory();
+            
+            if ($request->has('json')) {
+                return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to get Ethernet LAN traffic data: ' . $e->getMessage()
-                ]), 500);
+                    'message' => 'Using fallback data due to connection error',
+                    'ethernetTraffic' => $ethernetTraffic,
+                    'trafficHistory' => $trafficHistory
+                ]);
             }
             
-            return view('mikrotik.ethernet-lan-traffic', $data)
-                ->with('error', 'Failed to get Ethernet LAN traffic data: ' . $e->getMessage());
+            return view('mikrotik.ethernet-lan-traffic', compact('ethernetTraffic', 'trafficHistory'))
+                ->with('warning', 'Menggunakan data demo karena tidak dapat terhubung ke MikroTik');
         }
     }
     

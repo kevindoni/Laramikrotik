@@ -268,6 +268,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Ethernet LAN Traffic Monitoring ⭐ *NEW*
         Route::get('/ethernet-lan-traffic', [App\Http\Controllers\MikrotikMonitorController::class, 'ethernetLanTraffic'])->name('ethernet-lan-traffic');
+Route::get('/real-time-traffic', [App\Http\Controllers\MikrotikMonitorController::class, 'getRealTimeTrafficData'])->name('real-time-traffic');
     });
     
     // Company Settings
