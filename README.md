@@ -9,6 +9,7 @@
 - **Interactive Charts**: ApexCharts untuk visualisasi data usage trends
 - **Usage Analytics**: Analisis mendalam penggunaan data harian dan bulanan
 - **Top Users Tracking**: Monitoring pengguna dengan konsumsi data tertinggi
+- **Revenue Analytics**: Tracking revenue dan projected income real-time
 
 ### 🖥️ **System Health Monitoring** ⭐ *NEW*
 - **Real-time System Monitor**: Monitoring CPU, memory, dan storage secara real-time
@@ -23,18 +24,21 @@
 - **User Authentication**: Sistem login terintegrasi dengan role-based access
 - **Customer Portal**: Dashboard khusus untuk pelanggan
 
-### 💰 **Billing & Payment System**
-- **Invoice Generation**: Pembuatan tagihan otomatis
-- **Payment Tracking**: Pencatatan dan monitoring pembayaran
-- **Billing Cycles**: Dukungan berbagai siklus penagihan
-- **Payment History**: Riwayat pembayaran lengkap
+### 💰 **Billing & Payment System** ⭐ *ENHANCED*
+- **Automated Invoice Generation**: Generate invoice otomatis berdasarkan billing cycles
+- **Overdue Management**: Auto-block system untuk user yang telat bayar
+- **Payment Verification**: Sistem verifikasi pembayaran dengan status tracking
+- **Console Commands**: Automated billing dengan artisan commands
+- **Billing Cycles**: Flexible billing cycles (daily, weekly, monthly)
+- **Payment History**: Riwayat pembayaran lengkap dengan receipt generation
 
-### 🌐 **Mikrotik Integration**
-- **Real-time Sync**: Sinkronisasi otomatis dengan Mikrotik RouterOS
-- **PPPoE Management**: Manajemen secret dan profile PPPoE
-- **Usage Monitoring**: Monitoring penggunaan bandwidth real-time
-- **Automatic Commands**: Eksekusi perintah Mikrotik otomatis
-- **API Fallback System**: Sistem fallback untuk koneksi yang tidak stabil
+### 🌐 **Mikrotik Integration** ⭐ *ENHANCED*
+- **Auto-Sync System**: Sinkronisasi otomatis PPP secrets dan profiles
+- **Retry Logic**: Connection management dengan progressive timeout
+- **SSL Support**: Koneksi aman dengan SSL/TLS
+- **Connection Pooling**: Optimasi performa dengan connection reuse
+- **Fallback System**: Demo data untuk testing dan development
+- **Error Handling**: Comprehensive error categorization dan logging
 
 ### 📈 **Monitoring & Reporting**
 - **Usage Logs**: Log penggunaan data yang detail
@@ -54,6 +58,8 @@
 - **Authentication**: Laravel Sanctum
 - **UI Components**: DataTables, Select2, SweetAlert2
 - **Monitoring**: Real-time system health monitoring
+- **Performance**: Connection pooling, caching, chunking
+- **Security**: SSL/TLS, CSRF protection, input validation
 - **Responsive Design**: Mobile-first responsive layout
 
 ## 📋 Requirements
@@ -174,19 +180,23 @@ php artisan serve
 ## 📊 Database Schema
 
 ### Core Tables
-- `customers` - Data pelanggan
-- `ppp_profiles` - Profile PPPoE Mikrotik
-- `ppp_secrets` - Secret PPPoE users
-- `usage_logs` - Log penggunaan data
-- `invoices` - Data tagihan
-- `payments` - Data pembayaran
-- `mikrotik_settings` - Konfigurasi Mikrotik
+- `customers` - Data pelanggan dengan identity card types
+- `ppp_profiles` - Profile PPPoE Mikrotik dengan billing cycles
+- `ppp_secrets` - Secret PPPoE users dengan auto-sync
+- `usage_logs` - Log penggunaan data real-time
+- `invoices` - Data tagihan dengan automated generation
+- `payments` - Data pembayaran dengan verification system
+- `mikrotik_settings` - Konfigurasi Mikrotik dengan connection management
+- `notifications` - Sistem notifikasi terpisah
 
-### System Monitoring ⭐ *NEW*
+### System Monitoring ⭐ *ENHANCED*
 - **Real-time API Integration**: Direct connection ke MikroTik RouterOS API
 - **Fallback System**: Realistic data generation untuk demo dan testing
 - **Timeout Protection**: Enhanced connection handling untuk koneksi yang tidak stabil
 - **JSON API Endpoints**: RESTful API untuk monitoring data
+- **Connection Pooling**: Optimasi koneksi untuk performa tinggi
+- **Error Categorization**: Kategorisasi error untuk debugging
+- **Performance Metrics**: Logging metrics performa untuk monitoring
 
 ## 🤝 Contributing
 
@@ -198,7 +208,17 @@ php artisan serve
 
 ## 📝 Changelog
 
-### v1.1.0 (2025-08-03) ⭐ *LATEST*
+### v1.2.0 (2025-08-03) ⭐ *LATEST*
+- ✨ **NEW**: Auto-sync system untuk PPP secrets dan profiles
+- 🔄 **NEW**: Real-time system health monitoring dengan fallback system
+- 💰 **NEW**: Automated billing system dengan console commands
+- 🔧 **NEW**: Enhanced Mikrotik API integration dengan retry logic
+- 📊 **NEW**: Comprehensive error handling dan logging system
+- 🛡️ **ENHANCED**: Security improvements dengan role-based access
+- ⚡ **OPTIMIZED**: Performance improvements dengan connection pooling
+- 🎨 **IMPROVED**: UI/UX enhancements dengan responsive design
+
+### v1.1.0 (2025-08-03)
 - ✨ **NEW**: Comprehensive System Health Monitoring
 - 📊 **NEW**: Real-time interface monitoring (24+ interfaces)
 - 🌡️ **NEW**: Hardware health sensors dan temperature monitoring
