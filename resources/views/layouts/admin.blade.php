@@ -240,6 +240,11 @@
                     <a class="collapse-item" href="{{ route('mikrotik.packet-loss') }}">
                         <i class="fas fa-exclamation-triangle"></i> Packet Loss
                     </a>
+                    <div class="collapse-divider"></div>
+                    <h6 class="collapse-header">Traffic Monitoring:</h6>
+                    <a class="collapse-item" href="{{ route('mikrotik.ethernet-lan-traffic') }}">
+                        <i class="fas fa-network-wired"></i> Ethernet LAN Traffic ⭐
+                    </a>
                 </div>
             </div>
         </li>

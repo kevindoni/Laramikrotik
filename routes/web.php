@@ -265,6 +265,9 @@ Route::middleware(['auth'])->group(function () {
         // Quality Monitoring
         Route::get('/quality-metrics', [App\Http\Controllers\MikrotikMonitorController::class, 'qualityMetrics'])->name('quality-metrics');
         Route::get('/packet-loss', [App\Http\Controllers\MikrotikMonitorController::class, 'packetLoss'])->name('packet-loss');
+        
+        // Ethernet LAN Traffic Monitoring ⭐ *NEW*
+        Route::get('/ethernet-lan-traffic', [App\Http\Controllers\MikrotikMonitorController::class, 'ethernetLanTraffic'])->name('ethernet-lan-traffic');
     });
     
     // Company Settings
