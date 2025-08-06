@@ -315,7 +315,7 @@ const REFRESH_INTERVAL = 2000; // 2 seconds
 const ERROR_BACKOFF_MULTIPLIER = 2;
 
 // Global functions accessible from onclick attributes
-function refreshData() {
+window.refreshData = function() {
     // Prevent multiple simultaneous requests
     if (isRefreshing) {
         console.log('Refresh already in progress, skipping...');
@@ -389,9 +389,9 @@ function refreshData() {
                 refreshBtn.disabled = false;
             }
         });
-}
+};
 
-function toggleRealTimeMonitoring() {
+window.toggleRealTimeMonitoring = function() {
     const toggleBtn = document.getElementById('toggleMonitoringBtn');
     const isMonitoring = refreshInterval !== null;
     
@@ -408,7 +408,7 @@ function toggleRealTimeMonitoring() {
         toggleBtn.className = 'btn btn-success btn-sm';
         updateConnectionStatus(true);
     }
-}
+};
 
 // Initialize real-time monitoring
 document.addEventListener('DOMContentLoaded', function() {
@@ -666,7 +666,7 @@ function updateLastRefreshTime() {
     }
 }
 
-function exportData() {
+window.exportData = function() {
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Interface,Status,Download (Mbps),Upload (Mbps),Utilization (%),Errors,Last Updated\n";
@@ -683,6 +683,6 @@ function exportData() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
+};
 </script>
 @endsection 
