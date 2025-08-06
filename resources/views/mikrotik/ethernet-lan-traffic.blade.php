@@ -331,8 +331,10 @@ function refreshData() {
     refreshBtn.disabled = true;
     
     // Fetch new data via AJAX
+    console.log('Fetching real-time traffic data...');
     fetch('/real-time-traffic')
         .then(response => {
+            console.log('Response status:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }

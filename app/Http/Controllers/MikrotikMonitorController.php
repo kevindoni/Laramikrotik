@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\MikrotikApiService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Exception;
 
 class MikrotikMonitorController extends Controller
 {
@@ -748,10 +749,14 @@ class MikrotikMonitorController extends Controller
     public function getRealTimeTrafficData(Request $request)
     {
         try {
+            Log::info('Real-time traffic data request received', ['interface' => $request->get('interface')]);
+            
             $mikrotikService = new MikrotikApiService();
             $interfaceName = $request->get('interface');
             
             $trafficData = $mikrotikService->getRealTimeTrafficData($interfaceName);
+            
+            Log::info('Real-time traffic data retrieved successfully', ['timestamp' => now()->toISOString()]);
             
             return response()->json([
                 'status' => 'success',
@@ -759,11 +764,13 @@ class MikrotikMonitorController extends Controller
                 'timestamp' => now()->toISOString()
             ]);
         } catch (Exception $e) {
-            Log::error('Failed to get real-time traffic data: ' . $e->getMessage());
+            Log::error('Failed to get real-time traffic data: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to get real-time traffic data',
+                'message' => 'Failed to get real-time traffic data: ' . $e->getMessage(),
                 'ethernetTraffic' => $this->getFallbackEthernetTraffic()
             ], 500);
         }
