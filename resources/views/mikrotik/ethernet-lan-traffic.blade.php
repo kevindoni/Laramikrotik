@@ -314,6 +314,102 @@ const MAX_CONSECUTIVE_ERRORS = 5;
 const REFRESH_INTERVAL = 2000; // 2 seconds
 const ERROR_BACKOFF_MULTIPLIER = 2;
 
+// Global functions accessible from onclick attributes
+function refreshData() {
+    // Prevent multiple simultaneous requests
+    if (isRefreshing) {
+        console.log('Refresh already in progress, skipping...');
+        return;
+    }
+    
+    isRefreshing = true;
+    
+    // Show loading indicator
+    const refreshBtn = document.querySelector('button[onclick="refreshData()"]');
+    const originalText = refreshBtn.innerHTML;
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    refreshBtn.disabled = true;
+    
+    // Fetch new data via AJAX
+    fetch('/real-time-traffic')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Update traffic data without page reload
+                updateTrafficData(data.ethernetTraffic);
+                updateLastRefreshTime();
+                
+                // Reset error counter on success
+                consecutiveErrors = 0;
+                updateConnectionStatus(true);
+                
+                // Reset to normal interval
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
+                }
+            } else {
+                throw new Error(data.message || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing data:', error);
+            consecutiveErrors++;
+            
+            // Update connection status
+            updateConnectionStatus(false, `Error: ${error.message}`);
+            
+            // Implement exponential backoff for errors
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                const backoffInterval = REFRESH_INTERVAL * Math.pow(ERROR_BACKOFF_MULTIPLIER, Math.min(consecutiveErrors - MAX_CONSECUTIVE_ERRORS, 3));
+                console.warn(`Too many consecutive errors (${consecutiveErrors}), backing off to ${backoffInterval}ms`);
+                
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = setInterval(refreshData, backoffInterval);
+                }
+            }
+            
+            // Don't show alert for auto-refresh, only log
+            if (!refreshBtn.disabled) {
+                console.warn('Auto-refresh failed, will retry in 2 seconds');
+            }
+        })
+        .finally(() => {
+            isRefreshing = false;
+            
+            // Restore button only if it was manually clicked
+            if (refreshBtn.disabled) {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
+        });
+}
+
+function toggleRealTimeMonitoring() {
+    const toggleBtn = document.getElementById('toggleMonitoringBtn');
+    const isMonitoring = refreshInterval !== null;
+    
+    if (isMonitoring) {
+        // Pause monitoring
+        stopRealTimeMonitoring();
+        toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+        toggleBtn.className = 'btn btn-warning btn-sm';
+        updateConnectionStatus(false, 'Paused');
+    } else {
+        // Resume monitoring
+        startRealTimeMonitoring();
+        toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        toggleBtn.className = 'btn btn-success btn-sm';
+        updateConnectionStatus(true);
+    }
+}
+
 // Initialize real-time monitoring
 document.addEventListener('DOMContentLoaded', function() {
     initializeTrafficChart();
@@ -471,82 +567,6 @@ function initializeDataTable() {
             }
         }
     });
-}
-
-function refreshData() {
-    // Prevent multiple simultaneous requests
-    if (isRefreshing) {
-        console.log('Refresh already in progress, skipping...');
-        return;
-    }
-    
-    isRefreshing = true;
-    
-    // Show loading indicator
-    const refreshBtn = document.querySelector('button[onclick="refreshData()"]');
-    const originalText = refreshBtn.innerHTML;
-    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-    refreshBtn.disabled = true;
-    
-    // Fetch new data via AJAX
-    fetch('/real-time-traffic')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                // Update traffic data without page reload
-                updateTrafficData(data.ethernetTraffic);
-                updateLastRefreshTime();
-                
-                // Reset error counter on success
-                consecutiveErrors = 0;
-                updateConnectionStatus(true);
-                
-                // Reset to normal interval
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = setInterval(refreshData, REFRESH_INTERVAL);
-                }
-            } else {
-                throw new Error(data.message || 'Unknown error');
-            }
-        })
-        .catch(error => {
-            console.error('Error refreshing data:', error);
-            consecutiveErrors++;
-            
-            // Update connection status
-            updateConnectionStatus(false, `Error: ${error.message}`);
-            
-            // Implement exponential backoff for errors
-            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-                const backoffInterval = REFRESH_INTERVAL * Math.pow(ERROR_BACKOFF_MULTIPLIER, Math.min(consecutiveErrors - MAX_CONSECUTIVE_ERRORS, 3));
-                console.warn(`Too many consecutive errors (${consecutiveErrors}), backing off to ${backoffInterval}ms`);
-                
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = setInterval(refreshData, backoffInterval);
-                }
-            }
-            
-            // Don't show alert for auto-refresh, only log
-            if (!refreshBtn.disabled) {
-                console.warn('Auto-refresh failed, will retry in 2 seconds');
-            }
-        })
-        .finally(() => {
-            isRefreshing = false;
-            
-            // Restore button only if it was manually clicked
-            if (refreshBtn.disabled) {
-                refreshBtn.innerHTML = originalText;
-                refreshBtn.disabled = false;
-            }
-        });
 }
 
 function updateTrafficData(ethernetTraffic) {
