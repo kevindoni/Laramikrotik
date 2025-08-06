@@ -756,6 +756,11 @@ class MikrotikMonitorController extends Controller
             
             $trafficData = $mikrotikService->getRealTimeTrafficData($interfaceName);
             
+            // Filter out _cached_at key from trafficData array
+            if (isset($trafficData['_cached_at'])) {
+                unset($trafficData['_cached_at']);
+            }
+            
             Log::info('Real-time traffic data retrieved successfully', ['timestamp' => now()->toISOString()]);
             
             return response()->json([
@@ -786,6 +791,11 @@ class MikrotikMonitorController extends Controller
             
             // Use real-time data for better performance
             $ethernetTraffic = $mikrotikService->getRealTimeTrafficData();
+            
+            // Filter out _cached_at key from ethernetTraffic array
+            if (isset($ethernetTraffic['_cached_at'])) {
+                unset($ethernetTraffic['_cached_at']);
+            }
             
             // Get traffic history for charts
             $trafficHistory = $mikrotikService->getEthernetTrafficHistory();
