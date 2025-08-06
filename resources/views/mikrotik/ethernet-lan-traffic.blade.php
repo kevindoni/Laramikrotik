@@ -666,25 +666,6 @@ function updateLastRefreshTime() {
     }
 }
 
-function toggleRealTimeMonitoring() {
-    const toggleBtn = document.getElementById('toggleMonitoringBtn');
-    const isMonitoring = refreshInterval !== null;
-    
-    if (isMonitoring) {
-        // Pause monitoring
-        stopRealTimeMonitoring();
-        toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
-        toggleBtn.className = 'btn btn-warning btn-sm';
-        updateConnectionStatus(false, 'Paused');
-    } else {
-        // Resume monitoring
-        startRealTimeMonitoring();
-        toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
-        toggleBtn.className = 'btn btn-success btn-sm';
-        updateConnectionStatus(true);
-    }
-}
-
 function exportData() {
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";

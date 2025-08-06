@@ -207,3 +207,38 @@
 [2025-08-06 14:10:49] local.INFO: Attempting to get interface data from MikroTik with quick connection  
 [2025-08-06 14:10:49] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
 [2025-08-06 14:10:49] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:12:13] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:12:14] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:12:15] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:12:15] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:12:15] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:12:16] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:12:17] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:12:17] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:12:17] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:13:18] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:13:18] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:13:18] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:13:19] local.INFO: Successfully got 24 real interfaces from MikroTik  
+[2025-08-06 14:13:20] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:13:21] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:13:21] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:13:21] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:14:29] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:29] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:30] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:14:30] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:14:30] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:14:32] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:32] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:14:33] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:14:33] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:14:44] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:44] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:45] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:14:45] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:14:45] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
+[2025-08-06 14:14:47] local.INFO: MikroTik connection established {"host":"id-11.tunnel.id"} 
+[2025-08-06 14:14:47] local.INFO: Attempting to get interface data from MikroTik with quick connection  
+[2025-08-06 14:14:47] local.WARNING: Quick interface query failed (will use enhanced fallback): Stream timed out  
+[2025-08-06 14:14:47] local.INFO: Using enhanced fallback data (MikroTik is reachable but interface query failed)  
